@@ -6,6 +6,8 @@
 
 ## 每个人从哪里开始
 
+先看 [每个人一句话任务及详细说明](docs/TEAM_PLAN.md)。五份任务卡可直接转给对应同学，均先说明要做出什么，再说明步骤和交付物。
+
 | 成员 | 暂定职责 | 先读 | 主要修改目录 |
 | --- | --- | --- | --- |
 | 你（仓库负责人） | 业务服务、数据与合并统筹 | [三人分工](docs/TEAM_PLAN.md)、[接口约定](contracts/README.md) | `services/api/`、`tests/integration/`、`docs/release/` |
