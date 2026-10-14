@@ -1,6 +1,6 @@
 # 协作接口 v0.1 草案
 
-这是团队自己的业务接口，不是 NK-GeniOS 官方 API。C 须验证真实平台能力，A 实现平台适配。三人确认后冻结第一轮字段；目前提供可运行 mock 作为交接样例。按已收紧范围，首版 preferences.remember 固定 false，长期记忆与复杂账号后置。
+这是团队自己的业务接口，不是 NK-GeniOS 官方 API。C 须验证真实平台能力，A 实现平台适配。三人确认后冻结第一轮字段；目前提供可运行 mock 作为交接样例。当前草案 preferences.remember 固定 false，未实现长期记忆；高收益增强可依评分计划另行确认，再同步修改契约、授权与验收。
 
 ## 请求和响应
 
@@ -22,6 +22,8 @@
 响应字段：`schema_version`、`mode`（mock/live）、`request_id`、`reply`、`pet_action`、`strategy`、`suggestion`、`sources`。准确结构见 JSON Schema 和 fixtures。无来源时 sources 为空，不能填虚构 URL。来源若有应为可检查的 HTTPS 资料链接和核对日期。
 
 智能体内部只返回 `reply`、`pet_action`、`strategy`、`suggested_task`（focus_25/relax_2/null）、`sources`。A 的服务校验后生成请求和建议标识，并补充固定标题/时长；**不是让模型生成 task_id 或决定奖励**。内部草案另见 `agent-output.schema.json`。
+
+focus_25/relax_2是协作样例，不是本轮必须同时实现的功能。A/B/C首次对接需按实际已接通任务固定可用子集，并统一旧pomodoro与新模板、中文宠物动作与动作枚举的映射。可用模板列表属于待确认的内部适配信息，当前公开schema未新增此字段；未开放任务不能进入真实建议。
 
 ## 任务接口
 
