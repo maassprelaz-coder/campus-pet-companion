@@ -1,0 +1,12 @@
+{
+  "schema_version": "0.1",
+  "event_id": "example-relax-1",
+  "event_type": "chat",
+  "user_message": "想稍微放松一下",
+  "scene": "sports",
+  "mood": null,
+  "preferences": {
+    "proactive": true,
+    "remember": false
+  }
+}

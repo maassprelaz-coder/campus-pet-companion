@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CompanionResponseV0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "mode",
+    "request_id",
+    "reply",
+    "pet_action",
+    "strategy",
+    "suggestion",
+    "sources"
+  ],
+  "properties": {
+    "reply": {
+      "type": "string",
+      "minLength": 1
+    },
+    "pet_action": {
+      "enum": [
+        "idle",
+        "happy",
+        "think",
+        "sleep",
+        "eat",
+        "roll",
+        "sad"
+      ]
+    },
+    "strategy": {
+      "enum": [
+        "listen",
+        "focus",
+        "relax",
+        "clarify",
+        "feedback",
+        "support"
+      ]
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "title",
+          "url",
+          "verified_on"
+        ],
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string",
+            "pattern": "^https://"
+          },
+          "verified_on": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          }
+        }
+      }
+    },
+    "schema_version": {
+      "const": "0.1"
+    },
+    "mode": {
+      "enum": [
+        "mock",
+        "live"
+      ]
+    },
+    "request_id": {
+      "type": "string"
+    },
+    "suggestion": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "suggestion_id",
+            "task_template_id",
+            "title",
+            "duration_seconds"
+          ],
+          "properties": {
+            "suggestion_id": {
+              "type": "string"
+            },
+            "task_template_id": {
+              "enum": [
+                "focus_25",
+                "relax_2"
+              ]
+            },
+            "title": {
+              "type": "string"
+            },
+            "duration_seconds": {
+              "type": "integer",
+              "minimum": 1
+            }
+          }
+        }
+      ]
+    }
+  }
+}

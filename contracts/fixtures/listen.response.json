@@ -1,0 +1,10 @@
+{
+  "schema_version": "0.1",
+  "mode": "mock",
+  "request_id": "example-request-listen",
+  "reply": "听起来今天不轻松。你愿意说说最累的是哪一部分吗？",
+  "pet_action": "think",
+  "strategy": "listen",
+  "suggestion": null,
+  "sources": []
+}

@@ -1,0 +1,7 @@
+{
+  "reply": "可以先停下来放松两分钟，愿意试试吗？",
+  "pet_action": "idle",
+  "strategy": "relax",
+  "suggested_task": "relax_2",
+  "sources": []
+}

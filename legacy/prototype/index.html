@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>校园陪伴式养成电子宠物</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700&family=ZCOOL+KuaiLe&display=swap" rel="stylesheet">
+    <!-- 引入 MediaPipe 手部追踪库 -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+</head>
+<body>
+    <!-- 背景音乐 -->
+    <audio id="bgm-main" loop>
+        <source src="O4000007YHP83XiuVU.ogg" type="audio/ogg">
+    </audio>
+    <audio id="bgm-scene" loop>
+        <source src="O400001pCttx4dIrZm.ogg" type="audio/ogg">
+    </audio>
+    
+    <!-- 音乐控制按钮 -->
+    <div id="music-control" class="music-control" onclick="toggleMusic()">
+        <span id="music-icon">🎵</span>
+    </div>
+
+    <!-- 顶部信息栏 (全局显示) -->
+    <header class="top-bar glass-panel" id="global-header" style="display: none; -webkit-app-region: drag;">
+        <div class="pet-info" style="-webkit-app-region: no-drag;">
+            <span id="display-pet-name">宠物名字</span> (<span id="display-pet-type">种类</span>)
+        </div>
+        <div class="currency" style="-webkit-app-region: no-drag;">
+            <span class="coin-icon">🪙</span>
+            <span id="coin-count">50</span> 翻译币
+        </div>
+    </header>
+
+    <!-- 0. 账号登录界面 -->
+    <div id="view-auth" class="screen active">
+        <div class="glass-card login-card">
+            <div class="login-header">
+                <h1>欢迎来到宠物校园</h1>
+                <p>登录你的专属账号</p>
+            </div>
+            <div class="input-group">
+                <label>账号</label>
+                <input type="text" id="auth-username" placeholder="请输入账号">
+            </div>
+            <div class="input-group">
+                <label>密码</label>
+                <input type="password" id="auth-password" placeholder="请输入密码">
+            </div>
+            <div class="auth-buttons">
+                <button class="primary-btn" onclick="login()">登录</button>
+                <button class="action-btn" style="margin-top:10px; width:100%;" onclick="register()">注册新账号</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 1. 领养界面 -->
+    <div id="view-adopt" class="screen">
+        <div class="glass-card login-card">
+            <div class="login-header">
+                <h1>领养你的专属宠物</h1>
+                <p>选择你的校园陪伴</p>
+            </div>
+            
+            <div class="pet-selector">
+                <button class="nav-btn" onclick="prevPet()">◀</button>
+                <div class="pet-preview">
+                    <div id="login-pet-blob" class="pet-blob">
+                        <img id="login-pet-img" class="pet-image" src="" alt="宠物">
+                    </div>
+                </div>
+                <button class="nav-btn" onclick="nextPet()">▶</button>
+            </div>
+            <p id="login-pet-type-name" class="type-name">糯米团子 (活泼黏人)</p>
+
+            <div class="input-group">
+                <label>你是谁？(主人称呼)</label>
+                <input type="text" id="owner-name" placeholder="例如：学长 / 丫头">
+            </div>
+            <div class="input-group">
+                <label>给它取个名字吧</label>
+                <input type="text" id="pet-name" placeholder="例如：小白">
+            </div>
+            
+            <button id="start-btn" class="primary-btn">确认领养，进入校园</button>
+        </div>
+    </div>
+
+    <!-- 2. 主世界：校园大地图 -->
+    <div id="view-map" class="screen">
+        <div class="map-container">
+            <!-- 地图图层 -->
+            <div class="map-bg" id="map-bg">
+                <!-- 真实用户GPS定位点 -->
+                <div id="user-marker"></div>
+                
+                <!-- 热区 -->
+                <div class="map-hotspot" style="top: 64.7%; left: 21.7%;" onclick="goToScene('理科操场')">理科操场</div>
+                <div class="map-hotspot" style="top: 40.3%; left: 51.8%;" onclick="goToScene('教学楼')">教学楼</div>
+                <div class="map-hotspot" style="top: 54.1%; left: 52.0%;" onclick="goToScene('图书馆')">图书馆</div>
+                <div class="map-hotspot" style="top: 23.5%; left: 57.8%;" onclick="goToScene('文科操场')">文科操场</div>
+                <div class="map-hotspot" style="top: 62%; left: 35%;" onclick="goToScene('宿舍')">宿舍</div>
+                <div class="map-hotspot" style="top: 41.0%; left: 37.0%;" onclick="goToScene('大草原')">大草原</div>
+                <div class="map-hotspot" style="top: 58.8%; left: 31.1%;" onclick="goToScene('第二食堂')">第二食堂</div>
+                <div class="map-hotspot" style="top: 24.0%; left: 40.2%;" onclick="goToScene('第一食堂')">第一食堂</div>
+                
+                <div id="map-pet" class="pet-blob" onclick="openCloseup()">
+                    <img id="map-pet-img" class="pet-image" src="" alt="宠物">
+                </div>
+            </div>
+        </div>
+        
+        <!-- 右侧功能菜单 -->
+        <div class="side-menu glass-panel">
+            <button class="menu-btn" onclick="openTasks()" style="position: relative;">
+                📋 任务
+                <span id="task-red-dot" class="red-dot" style="display: none;"></span>
+            </button>
+            <button class="menu-btn" onclick="openDiary()">📝 日记</button>
+            <button class="menu-btn" onclick="openCloseup()">💬 互动</button>
+            <button class="menu-btn" id="gps-btn" onclick="toggleGPS()">📍 定位跟随</button>
+            
+            <button class="menu-btn" id="pet-mode-btn" style="background: linear-gradient(#ff8b94, #ff6b81); color: white; font-weight: bold;">
+  🖥️ 桌宠模式
+</button>
+            
+            <!-- 新增地图缩放控制 -->
+            <div class="zoom-control">
+                <span style="font-size:12px; color:#ff8b94; font-weight:bold;">🔍 缩放</span>
+                <input type="range" id="map-zoom-slider" min="100" max="400" value="250" step="10">
+            </div>
+
+            <button class="menu-btn" onclick="logout()" style="color:#aaa; margin-top:auto;">🚪 退出</button>
+        </div>
+    </div>
+
+    <!-- 3. 具体场景界面 -->
+    <div id="view-scene" class="screen">
+        <div class="scene-header">
+            <button class="back-btn" onclick="switchView('view-map')">🔙 返回地图</button>
+            <h2 id="scene-title">场景名称</h2>
+        </div>
+        
+        <div class="scene-content">
+            <!-- 左侧课表栏目 (仅在教学楼显示) -->
+            <div class="schedule-panel glass-panel" id="schedule-panel" style="display: none;">
+                <h3>📅 本学期课表</h3>
+                <div class="schedule-image-container">
+                    <img id="schedule-image" src="" alt="课表">
+                </div>
+            </div>
+            
+            <div class="pet-container" id="scene-pet-container">
+                <!-- 场景动态背景层 (根据场景自动切换) -->
+                <div id="scene-bg-layer"></div>
+                
+                <!-- 教学楼课桌装饰 -->
+                <div id="classroom-desks">
+                    <div class="classroom-desk desk-left">
+                        <div class="desk-top">
+                            <span class="desk-book">📚</span>
+                            <span class="desk-book">📖</span>
+                            <span class="desk-book">📗</span>
+                        </div>
+                        <div class="desk-legs"></div>
+                    </div>
+                    <div class="classroom-desk desk-right">
+                        <div class="desk-top">
+                            <span class="desk-book">📕</span>
+                            <span class="desk-book">📘</span>
+                            <span class="desk-book">📙</span>
+                        </div>
+                        <div class="desk-legs"></div>
+                    </div>
+                </div>
+                
+                <!-- 图书馆装饰 -->
+                <div id="library-decor">
+                    <!-- 大型书架 -->
+                    <div class="library-bookshelf bookshelf-left">
+                        <div class="shelf-row">📚📖📕📗📘📙</div>
+                        <div class="shelf-row">📚📖📕📗📘📙</div>
+                        <div class="shelf-row">📚📖📕📗📘📙</div>
+                        <div class="shelf-row">📚📖📕📗📘📙</div>
+                    </div>
+                    <div class="library-bookshelf bookshelf-right">
+                        <div class="shelf-row">📚📖📕📗📘📙</div>
+                        <div class="shelf-row">📚📖📕📗📘📙</div>
+                        <div class="shelf-row">📚📖📕📗📘📙</div>
+                        <div class="shelf-row">📚📖📕📗📘📙</div>
+                    </div>
+                    
+                    <!-- 阅读桌椅 -->
+                    <div class="reading-table">
+                        <div class="table-top">
+                            <span class="table-book">📚</span>
+                            <span class="table-lamp">💡</span>
+                            <span class="table-book">📖</span>
+                        </div>
+                        <div class="table-legs"></div>
+                    </div>
+                    
+                    <!-- 盆栽植物 -->
+                    <div class="library-plant plant-corner-left">🪴</div>
+                    <div class="library-plant plant-corner-right">🌿</div>
+                    
+                    <!-- 散落的书 -->
+                    <div class="scattered-books">
+                        <span class="scattered-book">📕</span>
+                        <span class="scattered-book">📗</span>
+                        <span class="scattered-book">📘</span>
+                    </div>
+                </div>
+                
+                <!-- 大草原装饰 -->
+                <div id="grassland-decor">
+                    <!-- 绿色草坪 -->
+                    <div class="grass-lawn"></div>
+                    <!-- 太阳 -->
+                    <div class="sun">☀️</div>
+                    <!-- 白云 -->
+                    <div class="cloud cloud-1">☁️</div>
+                    <div class="cloud cloud-2">☁️</div>
+                    <div class="cloud cloud-3">☁️</div>
+                    <div class="cloud cloud-4">☁️</div>
+                    <!-- 野餐布 -->
+                    <div class="picnic-blanket"></div>
+                    <!-- 草和鲜花 -->
+                    <div class="grass-flower flower-1">🌸</div>
+                    <div class="grass-flower flower-2">🌼</div>
+                    <div class="grass-flower flower-3">🌺</div>
+                    <div class="grass-flower flower-4">🌻</div>
+                    <div class="grass-flower flower-5">🌷</div>
+                    <div class="grass-flower flower-6">🌿</div>
+                    <div class="grass-flower flower-7">🌿</div>
+                    <div class="grass-flower flower-8">🌸</div>
+                    <div class="grass-flower flower-9">🌼</div>
+                    <div class="grass-flower flower-10">🌺</div>
+                </div>
+                
+                <!-- 文科操场装饰 -->
+                <div id="sports2-decor">
+                    <!-- 红色跑道 -->
+                    <div class="running-track"></div>
+                    <!-- 绿色足球场 -->
+                    <div class="soccer-field"></div>
+                    <!-- 足球门 -->
+                    <div class="goal goal-left">🥅</div>
+                    <div class="goal goal-right">🥅</div>
+                    <!-- 观众席 -->
+                    <div class="bleachers bleachers-left"></div>
+                    <div class="bleachers bleachers-right"></div>
+                    <!-- 主席台 -->
+                    <div class="podium">🏟️</div>
+                    <!-- 樱花树 -->
+                    <div class="cherry-tree tree-1">🌸</div>
+                    <div class="cherry-tree tree-2">🌸</div>
+                    <div class="cherry-tree tree-3">🌸</div>
+                    <!-- 飘落的樱花 -->
+                    <div class="sakura petal-1">🌸</div>
+                    <div class="sakura petal-2">🌸</div>
+                    <div class="sakura petal-3">🌸</div>
+                    <div class="sakura petal-4">🌸</div>
+                    <div class="sakura petal-5">🌸</div>
+                    <!-- 彩旗 -->
+                    <div class="flag flag-1">🚩</div>
+                    <div class="flag flag-2">🏳️</div>
+                    <div class="flag flag-3">🏴</div>
+                    <div class="flag flag-4">🏁</div>
+                </div>
+                
+                <!-- 理科操场装饰（夜间霓虹风格） -->
+                <div id="sports1-decor">
+                    <!-- 发光跑道 -->
+                    <div class="neon-track"></div>
+                    <!-- 夜间灯光球场 -->
+                    <div class="neon-court"></div>
+                    <!-- 霓虹篮球架 -->
+                    <div class="neon-hoop hoop-left">🏀</div>
+                    <div class="neon-hoop hoop-right">🏀</div>
+                    <!-- 霓虹看台 -->
+                    <div class="neon-stand stand-left"></div>
+                    <div class="neon-stand stand-right"></div>
+                    <!-- 星空背景 -->
+                    <div class="neon-star star-1">✨</div>
+                    <div class="neon-star star-2">✨</div>
+                    <div class="neon-star star-3">✨</div>
+                    <div class="neon-star star-4">✨</div>
+                    <div class="neon-star star-5">✨</div>
+                    <!-- 悬浮星星灯 -->
+                    <div class="neon-lamp lamp-1">💫</div>
+                    <div class="neon-lamp lamp-2">💫</div>
+                    <div class="neon-lamp lamp-3">💫</div>
+                    <!-- 音乐律动灯 -->
+                    <div class="neon-beat beat-1">🎵</div>
+                    <div class="neon-beat beat-2">🎵</div>
+                    <div class="neon-beat beat-3">🎵</div>
+                    <!-- 科幻计分板 -->
+                    <div class="neon-scoreboard">🚀</div>
+                </div>
+                
+                <!-- 第一食堂装饰（极简干净版） -->
+                <div id="canteen1-decor">
+                    <!-- 今日推荐 -->
+                    <div class="canteen-menu">📋 今日推荐：红烧肉、糖醋里脊、番茄炒蛋</div>
+                    <!-- 餐桌1 -->
+                    <div class="canteen-table table-1">
+                        <span class="canteen-food">🍚</span>
+                        <span class="canteen-food">🥘</span>
+                    </div>
+                    <!-- 餐桌2 -->
+                    <div class="canteen-table table-2">
+                        <span class="canteen-food">🍜</span>
+                        <span class="canteen-food">🥗</span>
+                    </div>
+                    <!-- 餐桌3 -->
+                    <div class="canteen-table table-3">
+                        <span class="canteen-food">🍗</span>
+                        <span class="canteen-food">🥬</span>
+                    </div>
+                    <!-- 餐桌4 -->
+                    <div class="canteen-table table-4">
+                        <span class="canteen-food">🍕</span>
+                        <span class="canteen-food">🥤</span>
+                    </div>
+                    <!-- 植物1 -->
+                    <div class="canteen-plant plant-1">🪴</div>
+                    <!-- 植物2 -->
+                    <div class="canteen-plant plant-2">🌿</div>
+                </div>
+                
+                <!-- 第二食堂装饰（网红打卡风格） -->
+                <div id="canteen2-decor">
+                    <!-- 霓虹灯牌 -->
+                    <div class="neon-sign">✨ 好好吃饭 ✨</div>
+                    <!-- 打卡背景墙 -->
+                    <div class="photo-wall"></div>
+                    <!-- 大理石餐桌1 -->
+                    <div class="marble-table table-1">
+                        <span class="table-decoration">🌷</span>
+                        <span class="table-food">🍰</span>
+                        <span class="table-food">☕</span>
+                    </div>
+                    <!-- 大理石餐桌2 -->
+                    <div class="marble-table table-2">
+                        <span class="table-decoration">🌻</span>
+                        <span class="table-food">🥗</span>
+                        <span class="table-food">🍹</span>
+                    </div>
+                    <!-- 大理石餐桌3 -->
+                    <div class="marble-table table-3">
+                        <span class="table-decoration">🌸</span>
+                        <span class="table-food">🍜</span>
+                        <span class="table-food">🧋</span>
+                    </div>
+                </div>
+                
+                <!-- 宿舍内部场景背景 (你原有的代码，完全保留) -->
+                <div id="dorm-room">
+                    <!-- 墙壁 -->
+                    <div class="dorm-wall"></div>
+                    <!-- 窗户 -->
+                    <div class="dorm-window">
+                        <div class="window-pane"></div>
+                        <div class="window-pane"></div>
+                        <div class="window-pane"></div>
+                        <div class="window-pane"></div>
+                    </div>
+                    <!-- 窗帘 -->
+                    <div class="curtain left-curtain">🌿</div>
+                    <div class="curtain right-curtain">🌿</div>
+                    <!-- 书桌 -->
+                    <div class="dorm-furniture desk" onclick="interactWithFurniture('desk')">
+                        <div class="desk-top">
+                            <span class="desk-item">📚</span>
+                            <span class="desk-item">💡</span>
+                            <span class="desk-item">🖥️</span>
+                        </div>
+                        <div class="desk-legs"></div>
+                    </div>
+                    <!-- 书架 -->
+                    <div class="dorm-furniture bookshelf" onclick="interactWithFurniture('bookshelf')">
+                        <div class="shelf-row">📖📚📕</div>
+                        <div class="shelf-row">📗📘📙</div>
+                        <div class="shelf-row">📔📒📓</div>
+                        <div class="shelf-row">🪴</div>
+                    </div>
+                    <!-- 沙发 -->
+                    <div class="dorm-furniture sofa" onclick="interactWithFurniture('sofa')">
+                        <div class="sofa-back"></div>
+                        <div class="sofa-seat">
+                            <span class="cushion">🛋️</span>
+                        </div>
+                    </div>
+                    <!-- 挂画/照片墙 -->
+                    <div class="dorm-furniture wall-art" onclick="interactWithFurniture('wall-art')">
+                        <div class="art-frame">🖼️</div>
+                        <div class="art-frame">🎨</div>
+                        <div class="art-frame">📷</div>
+                    </div>
+                    <!-- 小桌子 -->
+                    <div class="dorm-furniture small-table" onclick="interactWithFurniture('small-table')">
+                        <div class="table-top">☕</div>
+                    </div>
+                    <!-- 植物 -->
+                    <div class="dorm-furniture plant" onclick="interactWithFurniture('plant')">
+                        <span>🌱</span>
+                    </div>
+                    <!-- 卧室家具装饰层 (商店购买的家具) -->
+                    <div id="furniture-layer"></div>
+                </div>
+                
+                <div class="pet-blob" id="scene-pet-avatar" onclick="petThePet(event)">
+                    <img id="scene-pet-img" class="pet-image" src="" alt="宠物">
+                </div>
+                <div class="action-tag" id="scene-action-tag">正在发呆</div>
+                <div class="pet-hint">狂点宠物“摸摸”它！(摸10次有惊喜)</div>
+            </div>
+
+            <!-- 控制面板 (完整功能版) -->
+            <div class="scene-panel glass-panel" id="scene-panel">
+                <!-- 图书馆番茄钟 (完整功能) -->
+                <div id="panel-library" style="display: none;">
+                    <h3>🍅 专注计时器</h3>
+                    <div id="timer-display">25:00</div>
+                    <div class="timer-progress">
+                        <div id="timer-progress-bar" style="width: 0%;"></div>
+                    </div>
+                    <div class="timer-controls">
+                        <select id="focus-duration" onchange="changeFocusDuration()">
+                            <option value="25">25分钟</option>
+                            <option value="45">45分钟</option>
+                            <option value="60">60分钟</option>
+                        </select>
+                        <button id="timer-btn" class="primary-btn" onclick="toggleTimer()">开始专注</button>
+                    </div>
+                    <div class="stats">
+                        <p>今日专注: <span id="today-focus">0</span> 分钟</p>
+                        <p>累计专注: <span id="total-focus">0</span> 分钟</p>
+                    </div>
+                </div>
+                
+                <!-- 教学楼 (完整签到功能) -->
+                <div id="panel-classroom" style="display: none;">
+                    <h3>🏫 教学楼</h3>
+                    <div class="course-list">
+                        <button class="action-btn" onclick="signIn('高等数学')">高等数学签到</button>
+                        <button class="action-btn" onclick="signIn('大学英语')">大学英语签到</button>
+                        <button class="action-btn" onclick="signIn('计算机基础')">计算机基础签到</button>
+                        <button class="action-btn" onclick="signIn('体育')">体育课签到</button>
+                    </div>
+                    <div class="stats">
+                        <p>今日签到: <span id="today-sign">0</span> 次</p>
+                        <p>累计签到: <span id="total-sign">0</span> 次</p>
+                    </div>
+                </div>
+                
+                <!-- 理科操场 (完整运动功能) -->
+                <div id="panel-sports1" style="display: none;">
+                    <h3>🏃 理科操场</h3>
+                    <div class="exercise-list">
+                        <button class="action-btn" onclick="doExercise('跑步', 10)">跑步10分钟</button>
+                        <button class="action-btn" onclick="doExercise('打篮球', 20)">打篮球20分钟</button>
+                        <button class="action-btn" onclick="doExercise('打羽毛球', 15)">打羽毛球15分钟</button>
+                        <button class="action-btn" onclick="doExercise('跳绳', 5)">跳绳5分钟</button>
+                    </div>
+                    <div class="stats">
+                        <p>今日运动: <span id="today-exercise">0</span> 分钟</p>
+                        <p>累计运动: <span id="total-exercise">0</span> 分钟</p>
+                    </div>
+                </div>
+                
+                <!-- 文科操场 (完整运动功能) -->
+                <div id="panel-sports2" style="display: none;">
+                    <h3>⚽ 文科操场</h3>
+                    <div class="exercise-list">
+                        <button class="action-btn" onclick="doExercise('踢足球', 20)">踢足球20分钟</button>
+                        <button class="action-btn" onclick="doExercise('散步', 15)">散步15分钟</button>
+                        <button class="action-btn" onclick="doExercise('打排球', 20)">打排球20分钟</button>
+                        <button class="action-btn" onclick="doExercise('瑜伽', 10)">瑜伽10分钟</button>
+                    </div>
+                    <div class="stats">
+                        <p>今日运动: <span id="today-exercise">0</span> 分钟</p>
+                        <p>累计运动: <span id="total-exercise">0</span> 分钟</p>
+                    </div>
+                </div>
+                
+                <!-- 大草原 (完整放松功能) -->
+                <div id="panel-grassland" style="display: none;">
+                    <h3>🌿 大草原</h3>
+                    <div class="relax-list">
+                        <button class="action-btn" onclick="relax('晒太阳')">晒太阳</button>
+                        <button class="action-btn" onclick="flyKite()">放风筝 (+2币)</button>
+                        <button class="action-btn" onclick="relax('野餐')">野餐</button>
+                        <button class="action-btn" onclick="relax('看云')">看云发呆</button>
+                    </div>
+                </div>
+                
+                <!-- 宿舍 (完整功能) -->
+                <div id="panel-cabin" style="display: none;">
+                    <h3>🏠 温暖的宿舍</h3>
+                    <button class="action-btn" onclick="triggerSceneAction('睡觉')">让它睡觉</button>
+                    <button class="action-btn" onclick="triggerSceneAction('吃饭')">喂零食</button>
+                    <button class="primary-btn" style="margin-top:15px;" onclick="openShop()">🛒 家具商店</button>
+                </div>
+                
+                <!-- 食堂 (完整菜品功能) -->
+                <div id="panel-canteen" style="display: none;">
+                    <h3>🍱 食堂</h3>
+                    <div class="food-list">
+                        <button class="action-btn" onclick="eatFood('红烧肉')">红烧肉</button>
+                        <button class="action-btn" onclick="eatFood('糖醋里脊')">糖醋里脊</button>
+                        <button class="action-btn" onclick="eatFood('番茄炒蛋')">番茄炒蛋</button>
+                        <button class="action-btn" onclick="eatFood('麻辣烫')">麻辣烫</button>
+                        <button class="action-btn" onclick="eatFood('宫保鸡丁')">宫保鸡丁</button>
+                        <button class="action-btn" onclick="randomFood()">🎲 随机菜品</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. 宠物特写界面 (深度交流) -->
+    <div id="view-closeup" class="screen">
+        <div class="scene-header" style="-webkit-app-region: drag;">
+            <button class="back-btn" onclick="switchView('view-map')" style="-webkit-app-region: no-drag;">🔙 返回地图</button>
+            <h2>深度互动</h2>
+        </div>
+        
+        <div class="main-content">
+            <!-- 左侧：特写大图 -->
+            <div class="pet-area">
+                <div class="pet-container closeup-container">
+                    <div class="pet-blob" id="closeup-pet-avatar" onclick="petThePet(event)">
+                        <img id="closeup-pet-img" class="pet-image" src="" alt="宠物">
+                    </div>
+                    <div class="action-tag" id="closeup-action-tag">等你聊天呢</div>
+                </div>
+                <div class="action-buttons glass-panel">
+                    <button class="action-btn" onclick="triggerSceneAction('打滚')">打个滚</button>
+                    <button class="action-btn" onclick="triggerSceneAction('开心')">逗它笑</button>
+                    <button class="action-btn" onclick="openCamera()">📷 拍合照</button>
+                    <button class="action-btn" onclick="openPhotoWall()">🖼️ 照片墙</button>
+                </div>
+            </div>
+
+            <!-- 右侧：AI 聊天区 -->
+            <div class="interaction-area glass-panel">
+                <div class="chat-box" id="chat-box">
+                    <div class="message system">
+                        【系统提示】宠物会用它的叫声回复你。你可以消耗 1 个翻译币，将叫声翻译成它真正的内心想法！
+                    </div>
+                </div>
+                <div class="input-area">
+                    <input type="text" id="chat-input" placeholder="和它说点什么吧...">
+                    <button id="send-btn" class="primary-btn">发送</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 5. 桌面宠物模式 (Electron 专属) -->
+    <div id="view-desktop-pet" class="screen" style="background: transparent;">
+        <div id="desktop-pet-container" class="desktop-pet-drag">
+            <div class="desktop-hover-menu">
+                <button class="action-btn" onclick="petThePet(event)">摸摸 (<span id="desktop-pet-count">0</span>)</button>
+                <button class="action-btn" onclick="exitDesktopPetMode()">🔙 返回地图</button>
+            </div>
+            <div class="pet-blob" id="desktop-pet-avatar">
+                <img id="desktop-pet-img" class="pet-image" src="" alt="宠物">
+            </div>
+            <div class="action-tag show" id="desktop-action-tag" style="position: static; margin-top: 10px; font-size: 14px; background: rgba(255,255,255,0.9);">发呆中</div>
+        </div>
+    </div>
+
+    <!-- 各种模态框 -->
+    <!-- 日记 -->
+    <div id="modal-diary" class="modal">
+        <div class="glass-card modal-content" style="max-width: 800px; display: flex; flex-direction: row; gap: 20px; align-items: stretch; transition: all 0.3s;">
+            <!-- 写日记区域 -->
+            <div id="diary-write-area" style="flex: 1; display: flex; flex-direction: column;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h2>📝 心情日记</h2>
+                    <button class="action-btn" onclick="toggleDiaryHistory()" style="padding: 5px 10px; font-size: 12px;">📖 查看往期日记</button>
+                </div>
+                <textarea id="diary-text" style="flex: 1; width: 100%; resize: none; border-radius: 12px; padding: 15px; border: 2px solid #eee; font-family: inherit; font-size: 16px; outline: none; min-height: 200px; margin-top: 10px;" placeholder="记录今天的心情吧... (宠物会感受你的情绪哦)"></textarea>
+                <div class="modal-actions" style="justify-content: flex-start; margin-top: 15px;">
+                    <button class="action-btn" onclick="closeModal('modal-diary')">取消</button>
+                    <button class="primary-btn" onclick="saveDiary()">保存日记 (+5币)</button>
+                </div>
+            </div>
+            
+            <!-- 历史日记区域 (默认隐藏) -->
+            <div id="diary-history-area" style="flex: 1; display: none; flex-direction: column;">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <h2>📖 往期日记</h2>
+                    <button class="action-btn" onclick="toggleDiaryHistory()" style="padding: 5px 10px; font-size: 12px;">✍️ 写新日记</button>
+                </div>
+                <div id="diary-history-list" style="flex: 1; overflow-y: auto; margin-top: 10px; border: 2px solid #eee; border-radius: 12px; padding: 15px; background: rgba(255,255,255,0.5);">
+                    <!-- 历史日记动态插入这里 -->
+                </div>
+            </div>
+
+            <!-- 宠物陪伴区 -->
+            <div style="width: 200px; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(255,255,255,0.4); border-radius: 16px; position: relative;">
+                <div class="pet-blob" id="diary-pet-avatar">
+                    <img id="diary-pet-img" class="pet-image" src="" alt="宠物">
+                </div>
+                <div class="action-tag show" id="diary-action-tag" style="position: static; margin-top: 20px; transform: none; box-shadow: none; font-size: 14px;">听你诉说...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 相机 -->
+    <div id="modal-camera" class="modal">
+        <div class="glass-card modal-content camera-modal">
+            <h2>📷 与宠物合照 <span id="ai-status" style="font-size:12px;color:#888;">(AI 视觉加载中...)</span></h2>
+            <div class="camera-container">
+                <!-- 相框覆盖层 -->
+                <img id="camera-frame-overlay" src="" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10;">
+                <video id="camera-video" autoplay playsinline></video>
+                <div id="camera-pet" class="pet-blob">
+                    <img id="camera-pet-img" class="pet-image" src="" alt="宠物">
+                </div>
+                <canvas id="camera-canvas" style="display: none;"></canvas>
+            </div>
+            
+            <div class="frame-selector" style="margin-top: 15px;">
+                <h4 style="margin: 5px 0; font-size: 14px; text-align: left;">🖼️ 选择相框:</h4>
+                <div id="frame-list" style="display: flex; gap: 10px; overflow-x: auto; padding-bottom: 10px;">
+                    <!-- 动态生成相框缩略图 -->
+                </div>
+            </div>
+            
+            <div class="modal-actions">
+                <button class="action-btn" onclick="stopCamera()">关闭</button>
+                <button class="primary-btn" onclick="takePhoto()">拍照保存 (+10币)</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 商店 -->
+    <div id="modal-shop" class="modal">
+        <div class="glass-card modal-content">
+            <h2>🛒 宠物家具店</h2>
+            <p>余额: <span id="shop-coins"></span> 币</p>
+            <div class="shop-list" id="shop-list"></div>
+            <div class="modal-actions">
+                <button class="action-btn" onclick="closeModal('modal-shop')">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 照片墙 -->
+    <div id="modal-photowall" class="modal">
+        <div class="glass-card modal-content" style="max-width: 800px;">
+            <h2>🖼️ 我们的照片墙</h2>
+            <div class="photo-grid" id="photo-grid"></div>
+            <div class="modal-actions">
+                <button class="action-btn" onclick="closeModal('modal-photowall')">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 任务中心 -->
+    <div id="modal-tasks" class="modal">
+        <div class="glass-card modal-content">
+            <h2>📋 任务中心</h2>
+            <p>完成每日任务可以获得翻译币哦！</p>
+            <div class="task-list" id="task-list">
+                <!-- 任务项将由 JS 动态生成 -->
+            </div>
+            <div class="modal-actions">
+                <button class="action-btn" onclick="closeModal('modal-tasks')">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

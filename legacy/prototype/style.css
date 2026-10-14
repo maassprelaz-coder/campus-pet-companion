@@ -1,0 +1,2211 @@
+/* 音乐控制按钮 */
+.music-control {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 50px;
+    height: 50px;
+    background: var(--primary-color);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    z-index: 9999;
+    transition: transform 0.3s;
+}
+
+.music-control:hover {
+    transform: scale(1.1);
+}
+
+#music-icon {
+    font-size: 24px;
+}
+
+.music-control.playing {
+    animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+:root {
+    --primary-color: #ffb7b2;
+    --secondary-color: #ffdac1;
+    --bg-gradient: linear-gradient(135deg, #e2f0cb 0%, #ffb7b2 100%);
+    --text-main: #555;
+    --glass-bg: rgba(255, 255, 255, 0.6);
+    --glass-border: rgba(255, 255, 255, 0.8);
+    
+    /* Pet Colors */
+    --pet-white: #ffffff;
+    --pet-cream: #fffdd0;
+    --pet-orange: #ffb347;
+    --pet-gray: #d3d3d3;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Nunito', 'ZCOOL KuaiLe', sans-serif;
+    background: var(--bg-gradient);
+    color: var(--text-main);
+    height: 100vh;
+    overflow: hidden;
+}
+
+.screen {
+    display: none;
+    height: 100%;
+    width: 100%;
+}
+
+.screen.active {
+    display: flex;
+    flex-direction: column;
+}
+
+/* 玻璃拟物风通用类 */
+.glass-card, .glass-panel {
+    background: var(--glass-bg);
+    backdrop-filter: blur(10px);
+    border: 2px solid var(--glass-border);
+    border-radius: 24px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+/* ================= 登录/注册界面 ================= */
+#view-auth, #view-adopt {
+    justify-content: center;
+    align-items: center;
+}
+
+.login-card {
+    padding: 40px;
+    width: 90%;
+    max-width: 400px;
+    text-align: center;
+}
+
+.login-header h1 {
+    font-family: 'ZCOOL KuaiLe', sans-serif;
+    color: #ff8b94;
+    margin-bottom: 10px;
+}
+
+.login-header p {
+    font-size: 14px;
+    color: #777;
+    margin-bottom: 30px;
+}
+
+.pet-selector {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 20px 0 10px;
+}
+
+.nav-btn {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: #ff8b94;
+    transition: transform 0.2s;
+}
+.nav-btn:hover { transform: scale(1.2); }
+
+.type-name {
+    font-weight: bold;
+    color: #ff8b94;
+    margin-bottom: 30px;
+}
+
+.input-group {
+    margin-bottom: 20px;
+    text-align: left;
+}
+
+.input-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: bold;
+    font-size: 14px;
+}
+
+.input-group input {
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.9);
+    outline: none;
+    font-size: 16px;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.primary-btn {
+    width: 100%;
+    padding: 14px;
+    background: #ff8b94;
+    color: white;
+    border: none;
+    border-radius: 16px;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    font-family: 'ZCOOL KuaiLe', sans-serif;
+}
+
+.primary-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(255, 139, 148, 0.4);
+}
+
+.primary-btn:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+    box-shadow: none;
+}
+
+/* ================= 宠物形象与动画 ================= */
+.pet-preview {
+    display: flex;
+    justify-content: center;
+}
+
+/* 修改原有的 .pet-blob 为纯图片容器 */
+.pet-blob {
+    width: 150px;
+    height: 150px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: all 0.5s ease;
+    cursor: pointer;
+    position: relative;
+    pointer-events: auto;
+    /* 移除旧的背景颜色和软泥变形 */
+    background: transparent !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+}
+
+/* 内部真正的 img 标签 */
+.pet-image {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    filter: drop-shadow(0 10px 10px rgba(0,0,0,0.2)); /* 给 GIF 加上整体的阴影，更有立体感 */
+}
+
+/* 简单的位移动画保留用于移动效果 */
+.roll { animation: bounceMove 2s infinite alternate; }
+
+@keyframes bounceMove {
+    0% { transform: translateY(0) scale(1); }
+    100% { transform: translateY(-20px) scale(1.05); }
+}
+
+/* ================= 浮动对话框 ================= */
+.floating-text {
+    position: absolute;
+    color: #333;
+    font-weight: normal;
+    font-size: 14px;
+    padding: 4px 12px;
+    background: linear-gradient(135deg, #ffffff 0%, #e6f2ff 100%);
+    border-radius: 10px;
+    pointer-events: none;
+    z-index: 1000;
+    white-space: nowrap;
+    border: 1px solid #cce5ff;
+    box-shadow: 0 2px 8px rgba(100, 150, 200, 0.2);
+}
+
+/* ================= 顶部与通用布局 ================= */
+.top-bar {
+    display: flex;
+    justify-content: space-between;
+    padding: 15px 30px;
+    margin: 20px;
+    font-size: 18px;
+    font-weight: bold;
+    z-index: 10;
+}
+
+/* ================= 主世界大地图 ================= */
+#view-map { position: relative; }
+
+.map-container {
+    position: absolute;
+    top: 80px;
+    left: 20px;
+    right: 150px;
+    bottom: 20px;
+    border-radius: 24px;
+    overflow: auto; /* 允许滚动 */
+    background: rgba(255,255,255,0.4);
+    border: 2px solid white;
+    scrollbar-width: none; /* 隐藏火狐滚动条 */
+    -ms-overflow-style: none; /* 隐藏IE滚动条 */
+    cursor: grab;
+}
+
+.map-container::-webkit-scrollbar {
+    display: none; /* 隐藏 Chrome/Safari 滚动条 */
+}
+
+.map-container:active {
+    cursor: grabbing;
+}
+
+.map-bg {
+    width: 250%; /* 将地图放大 2.5 倍 */
+    height: 250%;
+    position: relative;
+    background-image: url('map.png');
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+.map-hotspot {
+    position: absolute;
+    /* 手绘风：类似便利贴或标签的样式 */
+    background: rgba(253, 245, 230, 0.95); /* 米色底 */
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-family: 'ZCOOL KuaiLe', sans-serif;
+    font-size: 14px;
+    font-weight: bold;
+    color: #5c4033; /* 深棕色字体，仿墨水 */
+    cursor: pointer;
+    box-shadow: 2px 3px 6px rgba(0,0,0,0.3); /* 贴纸阴影 */
+    transform: translate(-50%, -50%);
+    transition: transform 0.2s, background 0.2s;
+    z-index: 2;
+    border: 1px solid #d2b48c; /* 牛皮纸色边框 */
+    letter-spacing: 1px;
+}
+
+.map-hotspot:hover {
+    transform: translate(-50%, -55%) scale(1.1) rotate(-3deg);
+    background: #fff;
+}
+
+/* 加上一颗红色图钉的效果 */
+.map-hotspot::before {
+    content: '';
+    position: absolute;
+    top: -6px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 10px;
+    height: 10px;
+    background: #e74c3c;
+    border-radius: 50%;
+    box-shadow: inset -2px -2px 4px rgba(0,0,0,0.3), 1px 1px 2px rgba(0,0,0,0.4);
+}
+
+#map-pet {
+    position: absolute;
+    width: 80px;
+    height: 80px;
+    font-size: 16px;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 3;
+    transition: top 1s ease-in-out, left 1s ease-in-out;
+}
+
+/* ================= 真实用户GPS标记 ================= */
+#user-marker {
+    display: none;
+    position: absolute;
+    width: 14px;
+    height: 14px;
+    background-color: #4285F4;
+    border: 2px solid white;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 4;
+    box-shadow: 0 0 8px rgba(66, 133, 244, 0.6);
+    pointer-events: none;
+}
+
+#user-marker::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 34px;
+    height: 34px;
+    background-color: rgba(66, 133, 244, 0.3);
+    border-radius: 50%;
+    animation: gpsPulse 1.5s infinite ease-out;
+}
+
+@keyframes gpsPulse {
+    0% { transform: translate(-50%, -50%) scale(0.5); opacity: 1; }
+    100% { transform: translate(-50%, -50%) scale(2); opacity: 0; }
+}
+
+/* 右侧菜单 */
+.side-menu {
+    position: absolute;
+    top: 80px;
+    right: 20px;
+    width: 110px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    padding: 20px 10px;
+    bottom: 20px; /* 让它占满高度以便退出按钮到底部 */
+}
+
+.zoom-control {
+    background: white;
+    border-radius: 16px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+.zoom-control input[type="range"] {
+    width: 80px;
+    accent-color: #ff8b94;
+    cursor: pointer;
+}
+
+.menu-btn {
+    position: relative;
+    padding: 15px 10px;
+    border: none;
+    border-radius: 16px;
+    background: white;
+    color: #ff8b94;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    transition: all 0.2s;
+}
+
+.menu-btn:hover {
+    background: #ff8b94;
+    color: white;
+    transform: translateX(-5px);
+}
+
+/* 往期日记列表项 */
+.diary-entry {
+    background: #fff;
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+.diary-entry-date {
+    font-size: 12px;
+    color: #999;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+.diary-entry-text {
+    font-size: 14px;
+    color: #444;
+    line-height: 1.4;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+.diary-ai-summary {
+    margin-top: 12px;
+    padding: 10px 12px;
+    background-color: #fff0f5;
+    border-radius: 8px;
+    font-size: 13px;
+    color: #d63031;
+    position: relative;
+    border: 1px dashed #ffb8b8;
+}
+.diary-ai-summary::before {
+    content: '🐾 宠物留言：';
+    font-weight: bold;
+    display: block;
+    margin-bottom: 4px;
+    color: #ff7675;
+}
+.red-dot {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    width: 12px;
+    height: 12px;
+    background-color: #ff4757;
+    border-radius: 50%;
+    border: 2px solid #fff;
+    box-shadow: 0 2px 4px rgba(255, 71, 87, 0.4);
+    animation: pulseRedDot 1.5s infinite;
+}
+
+@keyframes pulseRedDot {
+    0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 71, 87, 0.7); }
+    70% { transform: scale(1.1); box-shadow: 0 0 0 6px rgba(255, 71, 87, 0); }
+    100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 71, 87, 0); }
+}
+
+/* ================= 场景与特写通用 ================= */
+.scene-header {
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    margin-bottom: 20px;
+}
+
+.back-btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 12px;
+    background: white;
+    color: #555;
+    font-weight: bold;
+    cursor: pointer;
+    margin-right: 20px;
+}
+
+.scene-content, .main-content {
+    display: flex;
+    flex: 1;
+    padding: 0 20px 20px;
+    gap: 20px;
+    align-items: center;
+    justify-content: center;
+}
+
+.pet-container {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    height: 100%;
+}
+
+#scene-pet-avatar, #closeup-pet-avatar {
+    width: 250px;
+    height: 250px;
+    font-size: 40px;
+    margin-bottom: 20px;
+    z-index: 5;
+}
+
+.action-tag {
+    display: none !important;
+}
+
+.pet-hint {
+    margin-top: 20px;
+    font-size: 14px;
+    color: #777;
+}
+
+.scene-panel {
+    padding: 15px 20px;
+    min-width: 200px;
+    max-width: 220px;
+    text-align: center;
+    position: absolute;
+    top: 80px;
+    right: 40px;
+    z-index: 100;
+}
+
+.scene-panel h3 {
+    margin-bottom: 12px;
+    color: #ff8b94;
+    font-size: 16px;
+}
+
+#timer-display {
+    font-size: 48px;
+    font-family: 'ZCOOL KuaiLe', sans-serif;
+    margin-bottom: 20px;
+    color: #555;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 10px;
+    padding: 15px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin-top: 20px;
+}
+
+.action-btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 20px;
+    background: white;
+    color: #ff8b94;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.action-btn:hover {
+    background: #ff8b94;
+    color: white;
+}
+
+/* ================= 卧室家具层 ================= */
+#furniture-layer {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    pointer-events: auto;
+    z-index: 20;
+}
+
+.furniture-item {
+    position: absolute;
+    font-size: 80px !important;
+    transition: transform 0.3s, filter 0.3s;
+    cursor: pointer;
+    filter: drop-shadow(0 12px 20px rgba(0,0,0,0.4))
+            drop-shadow(0 6px 10px rgba(0,0,0,0.25));
+    transform: perspective(1000px) rotateX(10deg) rotateY(-5deg) translateZ(20px);
+    transform-style: preserve-3d;
+}
+
+.furniture-item:hover {
+    transform: perspective(1000px) rotateX(5deg) rotateY(0deg) translateZ(40px) scale(1.2);
+    filter: drop-shadow(0 20px 30px rgba(0,0,0,0.5))
+            drop-shadow(0 10px 15px rgba(0,0,0,0.3));
+}
+/* 简易排版位置 */
+.pos-bed { top: -50px; left: 68%; font-size: 350px !important; z-index: 5; }
+.pos-rug { bottom: 280px; left: 20%; font-size: 180px !important; z-index: 5; }
+.pos-toy { bottom: 280px; left: 8%; font-size: 180px !important; z-index: 5; }
+
+/* ================= 课表栏目 ================= */
+.schedule-panel {
+    width: 400px;
+    max-width: 40%;
+    height: auto;
+    max-height: 500px;
+    padding: 20px;
+    overflow-y: auto;
+    margin-right: 20px;
+    z-index: 10;
+}
+
+.schedule-panel h3 {
+    text-align: center;
+    margin-bottom: 15px;
+    color: var(--primary-color);
+}
+
+.schedule-image-container {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+}
+
+#schedule-image {
+    width: 100%;
+    height: auto;
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+/* ================= 教学楼课桌装饰 ================= */
+#classroom-desks {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    display: none;
+}
+
+.classroom-desk {
+    position: absolute;
+    width: 540px;
+    height: 360px;
+    z-index: 1;
+}
+
+.desk-left {
+    bottom: 180px;
+    left: 5%;
+}
+
+.desk-right {
+    bottom: 180px;
+    right: 10%;
+}
+
+.classroom-desk .desk-top {
+    width: 100%;
+    height: 60%;
+    background: linear-gradient(145deg, #d4a574 0%, #b8865a 100%);
+    border-radius: 8px 8px 0 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 30px;
+    box-shadow: 0 12px 24px rgba(0,0,0,0.2);
+}
+
+.classroom-desk .desk-legs {
+    width: 100%;
+    height: 40%;
+    display: flex;
+    justify-content: space-between;
+    padding: 0 60px;
+}
+
+.classroom-desk .desk-legs::before,
+.classroom-desk .desk-legs::after {
+    content: '';
+    width: 60px;
+    height: 100%;
+    background: #8b6914;
+    border-radius: 0 0 12px 12px;
+}
+
+.desk-book {
+    font-size: 96px;
+    animation: floatBook 3s ease-in-out infinite;
+}
+
+.desk-book:nth-child(2) {
+    animation-delay: 0.5s;
+}
+
+.desk-book:nth-child(3) {
+    animation-delay: 1s;
+}
+
+@keyframes floatBook {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-5px); }
+}
+
+/* ================= 图书馆装饰 ================= */
+#library-decor {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    display: none;
+}
+
+/* 大型书架 */
+.library-bookshelf {
+    position: absolute;
+    width: 200px;
+    height: 400px;
+    background: linear-gradient(180deg, #8b5a2b 0%, #6b3d0f 100%);
+    border: 4px solid #4a2c0a;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-around;
+    padding: 10px;
+    box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+}
+
+.bookshelf-left {
+    top: 80px;
+    left: 30px;
+}
+
+.bookshelf-right {
+    top: 80px;
+    right: 30px;
+}
+
+.library-bookshelf .shelf-row {
+    height: 60px;
+    background: linear-gradient(180deg, #7a4a1f 0%, #5a320d 100%);
+    border-bottom: 3px solid #4a2c0a;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 5px;
+    font-size: 36px;
+}
+
+/* 阅读桌椅 */
+.reading-table {
+    position: absolute;
+    bottom: 200px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 600px;
+    height: 360px;
+}
+
+.reading-table .table-top {
+    width: 100%;
+    height: 60%;
+    background: linear-gradient(145deg, #d4a574 0%, #b8865a 100%);
+    border-radius: 24px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 60px;
+    box-shadow: 0 12px 24px rgba(0,0,0,0.3);
+}
+
+.reading-table .table-legs {
+    width: 100%;
+    height: 40%;
+    display: flex;
+    justify-content: space-between;
+    padding: 0 60px;
+}
+
+.reading-table .table-legs::before,
+.reading-table .table-legs::after {
+    content: '';
+    width: 60px;
+    height: 100%;
+    background: #8b6914;
+    border-radius: 0 0 12px 12px;
+}
+
+.table-book {
+    font-size: 96px;
+}
+
+.table-lamp {
+    font-size: 112px;
+    animation: lampGlow 2s ease-in-out infinite;
+}
+
+@keyframes lampGlow {
+    0%, 100% { filter: brightness(1); }
+    50% { filter: brightness(1.3); }
+}
+
+/* 阅读椅子 */
+.reading-chair {
+    position: absolute;
+    bottom: 180px;
+    width: 160px;
+    height: 200px;
+    background: linear-gradient(180deg, #a0522d 0%, #8b4513 100%);
+    border-radius: 16px 16px 0 0;
+}
+
+.chair-left {
+    left: calc(50% - 360px);
+}
+
+.chair-right {
+    right: calc(50% - 360px);
+}
+
+/* 盆栽植物 */
+.library-plant {
+    position: absolute;
+    font-size: 64px;
+    animation: plantSway 4s ease-in-out infinite;
+}
+
+.plant-corner-left {
+    bottom: 100px;
+    left: 50px;
+    font-size: 160px;
+}
+
+.plant-corner-right {
+    bottom: 100px;
+    right: 50px;
+}
+
+@keyframes plantSway {
+    0%, 100% { transform: rotate(-2deg); }
+    50% { transform: rotate(2deg); }
+}
+
+/* 散落的书 */
+.scattered-books {
+    position: absolute;
+    bottom: 120px;
+    left: 20%;
+}
+
+.scattered-book {
+    font-size: 48px;
+    display: inline-block;
+    margin: 0 10px;
+    transform: rotate(-15deg);
+}
+
+.scattered-book:nth-child(2) {
+    transform: rotate(10deg);
+}
+
+.scattered-book:nth-child(3) {
+    transform: rotate(-25deg);
+}
+
+/* ================= 大草原装饰 ================= */
+#grassland-decor {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    display: none;
+}
+
+/* 绿色草坪 */
+.grass-lawn {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 50%;
+    background: linear-gradient(180deg, #90ee90 0%, #32cd32 100%);
+}
+
+/* 太阳 */
+.sun {
+    position: absolute;
+    top: 8%;
+    right: 5%;
+    font-size: 100px;
+    animation: sunGlow 4s ease-in-out infinite;
+}
+
+@keyframes sunGlow {
+    0%, 100% { transform: scale(1); filter: brightness(1); }
+    50% { transform: scale(1.1); filter: brightness(1.2); }
+}
+
+/* 白云 */
+.cloud {
+    position: absolute;
+    font-size: 100px;
+    animation: cloudFloat 8s ease-in-out infinite;
+}
+
+.cloud-1 {
+    top: 10%;
+    left: 10%;
+    animation-delay: 0s;
+}
+
+.cloud-2 {
+    top: 15%;
+    left: 60%;
+    animation-delay: 2s;
+}
+
+.cloud-3 {
+    top: 5%;
+    left: 35%;
+    animation-delay: 4s;
+}
+
+.cloud-4 {
+    top: 20%;
+    left: 80%;
+    animation-delay: 6s;
+}
+
+@keyframes cloudFloat {
+    0%, 100% { transform: translateX(0); }
+    50% { transform: translateX(30px); }
+}
+
+/* 草和鲜花 */
+.grass-flower {
+    position: absolute;
+    font-size: 50px;
+    animation: flowerSway 3s ease-in-out infinite;
+}
+
+.flower-1 {
+    bottom: 40%;
+    left: 10%;
+    animation-delay: 0s;
+}
+
+.flower-2 {
+    bottom: 45%;
+    left: 25%;
+    animation-delay: 0.5s;
+}
+
+.flower-3 {
+    bottom: 35%;
+    left: 45%;
+    animation-delay: 1s;
+}
+
+.flower-4 {
+    bottom: 42%;
+    left: 65%;
+    animation-delay: 1.5s;
+}
+
+.flower-5 {
+    bottom: 38%;
+    left: 85%;
+    animation-delay: 2s;
+}
+
+.flower-6 {
+    bottom: 30%;
+    left: 15%;
+    animation-delay: 0.3s;
+}
+
+.flower-7 {
+    bottom: 28%;
+    left: 75%;
+    animation-delay: 0.8s;
+}
+
+.flower-8 {
+    bottom: 25%;
+    left: 35%;
+    animation-delay: 1.2s;
+}
+
+.flower-9 {
+    bottom: 22%;
+    left: 55%;
+    animation-delay: 1.7s;
+}
+
+.flower-10 {
+    bottom: 20%;
+    left: 90%;
+    animation-delay: 2.2s;
+}
+
+@keyframes flowerSway {
+    0%, 100% { transform: rotate(-5deg); }
+    50% { transform: rotate(5deg); }
+}
+
+/* ================= 文科操场装饰 ================= */
+#sports2-decor {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    display: none;
+}
+
+/* 红色跑道 */
+.running-track {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 50%;
+    background: linear-gradient(180deg, #dc3545 0%, #c82333 100%);
+    border-radius: 50px;
+}
+
+/* 绿色足球场 */
+.soccer-field {
+    position: absolute;
+    bottom: 10%;
+    left: 15%;
+    width: 70%;
+    height: 30%;
+    background: linear-gradient(180deg, #51cf66 0%, #40c057 100%);
+    border-radius: 20px;
+    border: 4px solid #fff;
+}
+
+/* 足球门 */
+.goal {
+    position: absolute;
+    font-size: 80px;
+    bottom: 15%;
+}
+
+.goal-left {
+    left: 10%;
+}
+
+.goal-right {
+    right: 10%;
+    transform: scaleX(-1);
+}
+
+/* 观众席 */
+.bleachers {
+    position: absolute;
+    width: 15%;
+    height: 25%;
+    bottom: 5%;
+    background: linear-gradient(0deg, #ff6b6b 0%, #ff8787 25%, #74c0fc 50%, #91d3ff 75%, #ffd43b 100%);
+    border-radius: 10px 10px 0 0;
+}
+
+.bleachers-left {
+    left: 2%;
+}
+
+.bleachers-right {
+    right: 2%;
+}
+
+/* 主席台 */
+.podium {
+    position: absolute;
+    top: 10%;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 100px;
+}
+
+/* 樱花树 */
+.cherry-tree {
+    position: absolute;
+    font-size: 100px;
+    animation: treeSway 3s ease-in-out infinite;
+}
+
+.tree-1 {
+    bottom: 45%;
+    left: 5%;
+    animation-delay: 0s;
+}
+
+.tree-2 {
+    bottom: 42%;
+    right: 5%;
+    animation-delay: 1s;
+}
+
+.tree-3 {
+    bottom: 48%;
+    left: 50%;
+    transform: translateX(-50%);
+    animation-delay: 0.5s;
+}
+
+@keyframes treeSway {
+    0%, 100% { transform: rotate(-3deg); }
+    50% { transform: rotate(3deg); }
+}
+
+/* 飘落的樱花 */
+.sakura {
+    position: absolute;
+    font-size: 30px;
+    animation: sakuraFall 4s ease-in-out infinite;
+    opacity: 0.8;
+}
+
+.petal-1 {
+    top: 5%;
+    left: 10%;
+    animation-delay: 0s;
+}
+
+.petal-2 {
+    top: 10%;
+    left: 30%;
+    animation-delay: 1s;
+}
+
+.petal-3 {
+    top: 8%;
+    left: 60%;
+    animation-delay: 2s;
+}
+
+.petal-4 {
+    top: 12%;
+    left: 80%;
+    animation-delay: 0.5s;
+}
+
+.petal-5 {
+    top: 6%;
+    left: 45%;
+    animation-delay: 1.5s;
+}
+
+@keyframes sakuraFall {
+    0% {
+        transform: translateY(0) rotate(0deg);
+        opacity: 0.8;
+    }
+    100% {
+        transform: translateY(400px) rotate(360deg);
+        opacity: 0;
+    }
+}
+
+/* 彩旗 */
+.flag {
+    position: absolute;
+    font-size: 50px;
+    animation: flagWave 2s ease-in-out infinite;
+}
+
+.flag-1 {
+    top: 15%;
+    left: 5%;
+    animation-delay: 0s;
+}
+
+.flag-2 {
+    top: 18%;
+    right: 5%;
+    animation-delay: 0.5s;
+}
+
+.flag-3 {
+    top: 20%;
+    left: 20%;
+    animation-delay: 1s;
+}
+
+.flag-4 {
+    top: 22%;
+    right: 20%;
+    animation-delay: 1.5s;
+}
+
+@keyframes flagWave {
+    0%, 100% { transform: rotate(-10deg); }
+    50% { transform: rotate(10deg); }
+}
+
+/* ================= 宿舍内部场景 ================= */
+#dorm-room {
+    display: none !important;
+    position: absolute;
+    top: -20px;
+    left: -80px;
+    right: -80px;
+    bottom: -20px;
+    z-index: 0;
+    pointer-events: none;
+}
+
+#dorm-room.active {
+    display: block !important;
+    pointer-events: auto;
+}
+
+.dorm-wall {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(180deg, #fff5ee 0%, #ffe4e1 100%);
+    border-radius: 20px;
+}
+
+/* 窗户 - 居中靠上，放大 */
+.dorm-window {
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 460px;
+    height: 280px;
+    background: linear-gradient(180deg, #87ceeb 0%, #e0f6ff 100%);
+    border: 10px solid #8b7355;
+    border-radius: 14px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    gap: 8px;
+    padding: 8px;
+    box-shadow: inset 0 0 30px rgba(255,255,255,0.5);
+    z-index: 1;
+}
+
+.window-pane {
+    border: 4px solid rgba(139, 115, 85, 0.5);
+    border-radius: 8px;
+}
+
+/* 窗帘 */
+.curtain {
+    position: absolute;
+    top: 0px;
+    font-size: 85px;
+    z-index: 2;
+}
+
+.left-curtain {
+    left: calc(50% - 300px);
+    transform: scaleX(-1);
+}
+
+.right-curtain {
+    right: calc(50% - 300px);
+}
+
+/* 可互动家具 */
+.dorm-furniture {
+    position: absolute;
+    cursor: pointer;
+    pointer-events: auto;
+    transition: all 0.3s ease;
+    z-index: 3;
+}
+
+.dorm-furniture:hover {
+    transform: scale(1.03);
+    filter: brightness(1.1);
+}
+
+/* 书桌 - 沙发正下方 */
+.desk {
+    top: 520px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 380px;
+}
+
+.desk-top {
+    background: linear-gradient(180deg, #d2691e 0%, #cd853f 100%);
+    height: 55px;
+    border-radius: 12px 12px 0 0;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    padding: 20px;
+    box-shadow: 0 7px 14px rgba(0,0,0,0.3);
+}
+
+.desk-item {
+    font-size: 54px;
+}
+
+.desk-legs {
+    display: flex;
+    justify-content: space-between;
+    padding: 0 25px;
+}
+
+.desk-legs::before,
+.desk-legs::after {
+    content: '';
+    width: 18px;
+    height: 80px;
+    background: #8b4513;
+    border-radius: 0 0 7px 7px;
+}
+
+/* 书架 - 窗户右侧 */
+.bookshelf {
+    bottom: 90px;
+    right: 70px;
+    width: 240px;
+    background: linear-gradient(180deg, #deb887 0%, #cd853f 100%);
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: 0 7px 16px rgba(0,0,0,0.3);
+}
+
+.shelf-row {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 72px;
+    border-bottom: 4px solid rgba(139, 69, 19, 0.3);
+    font-size: 56px;
+}
+
+.shelf-row:last-child {
+    border-bottom: none;
+}
+
+/* 沙发 - 窗户正下方，紧挨窗户 */
+.sofa {
+    top: 300px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 4;
+}
+
+.sofa-back {
+    width: 440px;
+    height: 115px;
+    background: linear-gradient(180deg, #ff6b6b 0%, #ee5a5a 100%);
+    border-radius: 35px 35px 0 0;
+}
+
+.sofa-seat {
+    width: 460px;
+    height: 105px;
+    background: linear-gradient(180deg, #ff8787 0%, #ff6b6b 100%);
+    border-radius: 0 0 18px 18px;
+    margin-left: -10px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-shadow: 0 7px 14px rgba(0,0,0,0.2);
+}
+
+.cushion {
+    font-size: 72px;
+    display: none;
+}
+
+/* 挂画墙 - 窗户左边，挨着窗户但不重叠，放大 */
+.wall-art {
+    top: 40px;
+    left: calc(50% - 650px);
+    display: flex;
+    gap: 12px;
+    z-index: 2;
+}
+
+.art-frame {
+    width: 130px;
+    height: 130px;
+    background: white;
+    border: 9px solid #8b7355;
+    border-radius: 16px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 66px;
+    box-shadow: 0 7px 14px rgba(0,0,0,0.2);
+}
+
+/* 小桌子 - 隐藏 */
+.small-table {
+    display: none;
+}
+
+.table-top {
+    width: 280px;
+    height: 55px;
+    background: linear-gradient(180deg, #a0522d 0%, #8b4513 100%);
+    border-radius: 16px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 52px;
+    box-shadow: 0 7px 12px rgba(0,0,0,0.2);
+    display: none;
+}
+
+.table-top::after {
+    content: '';
+    position: absolute;
+    top: 58px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 16px;
+    height: 62px;
+    background: #654321;
+    border-radius: 0 0 6px 6px;
+}
+
+/* 植物 - 书架旁边 */
+.plant {
+    bottom: 110px;
+    right: 170px;
+    font-size: 100px;
+    z-index: 3;
+}
+
+/* ================= 聊天区 ================= */
+.interaction-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 20px;
+    max-width: 500px;
+    height: 60vh; /* 限制高度，防止内容撑出屏幕底部导致输入框被遮挡 */
+    min-height: 400px;
+}
+
+.chat-box {
+    flex: 1;
+    overflow-y: auto;
+    padding-bottom: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.message {
+    max-width: 80%;
+    padding: 12px 18px;
+    border-radius: 20px;
+    font-size: 15px;
+    line-height: 1.4;
+    word-break: break-word;
+}
+
+.message.system {
+    align-self: center;
+    background: rgba(255,255,255,0.4);
+    color: #555;
+    font-size: 13px;
+    max-width: 90%;
+    text-align: center;
+}
+
+.message.user {
+    align-self: flex-end;
+    background: #ff8b94;
+    color: white;
+    border-bottom-right-radius: 4px;
+}
+
+.message.pet {
+    align-self: flex-start;
+    background: white;
+    color: #333;
+    border-bottom-left-radius: 4px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+.translate-btn {
+    background: #ffdac1;
+    border: none;
+    padding: 4px 8px;
+    border-radius: 8px;
+    font-size: 12px;
+    color: #555;
+    cursor: pointer;
+    margin-top: 5px;
+    display: block;
+}
+
+.input-area {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.input-area input {
+    flex: 1;
+    padding: 15px;
+    border: none;
+    border-radius: 20px;
+    background: white;
+    outline: none;
+    font-size: 16px;
+}
+
+.input-area button { width: 80px; }
+
+/* ================= 模态框 (Modal) ================= */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 100;
+    justify-content: center;
+    align-items: center;
+}
+
+.modal.active { display: flex; }
+
+.modal-content {
+    width: 90%;
+    max-width: 500px;
+    padding: 30px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modal-content h2 {
+    margin-bottom: 20px;
+    color: #ff8b94;
+    text-align: center;
+}
+
+#diary-text {
+    width: 100%;
+    padding: 15px;
+    border-radius: 12px;
+    border: 2px solid white;
+    background: rgba(255,255,255,0.8);
+    resize: none;
+    outline: none;
+    font-family: inherit;
+    margin-bottom: 20px;
+}
+
+.modal-actions {
+    display: flex;
+    gap: 15px;
+    justify-content: flex-end;
+    margin-top: 20px;
+}
+
+/* 摄像头模态框特有 */
+.camera-modal { max-width: 600px; }
+
+.camera-container {
+    position: relative;
+    width: 100%;
+    height: 300px;
+    background: #000;
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 10px;
+}
+
+#camera-video { 
+    width: 100%; 
+    height: 100%; 
+    object-fit: cover; 
+    transform: scaleX(-1); /* 镜像翻转，符合照镜子的直觉 */
+}
+
+/* 相框选择器 */
+.frame-option {
+    width: 50px;
+    height: 50px;
+    border: 2px solid transparent;
+    border-radius: 8px;
+    cursor: pointer;
+    object-fit: contain;
+    background: #f0f0f0;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.frame-option.selected {
+    border-color: #ff8b94;
+    transform: scale(1.1);
+    box-shadow: 0 4px 8px rgba(255, 139, 148, 0.4);
+}
+
+#camera-pet {
+    position: absolute;
+    width: 120px;
+    height: 120px;
+    font-size: 24px;
+    cursor: grab;
+    user-select: none;
+    transition: left 0.3s ease-out, top 0.3s ease-out; /* 平滑移动动画 */
+}
+#camera-pet:active {
+    cursor: grabbing;
+}
+
+/* 商店列表 */
+.shop-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 20px;
+}
+.shop-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(255,255,255,0.5);
+    padding: 10px 15px;
+    border-radius: 12px;
+}
+
+/* 照片墙 */
+.photo-grid {
+    position: relative;
+    min-height: 400px;
+    width: 100%;
+    overflow: hidden;
+    border: 2px dashed rgba(255,255,255,0.5);
+    border-radius: 12px;
+    margin-top: 20px;
+    background: rgba(255,255,255,0.2);
+}
+
+.photo-frame {
+    position: absolute;
+    background: transparent;
+    padding: 0; 
+    border-radius: 4px;
+    box-shadow: 2px 4px 12px rgba(0,0,0,0.3);
+    cursor: grab;
+    user-select: none;
+}
+
+.photo-frame:active {
+    cursor: grabbing;
+}
+
+.rotate-handle {
+    position: absolute;
+    bottom: 5px;
+    right: 5px;
+    width: 24px;
+    height: 24px;
+    background: #ff8b94;
+    color: white;
+    border-radius: 50%;
+    text-align: center;
+    line-height: 24px;
+    cursor: ew-resize;
+    font-size: 14px;
+    z-index: 2;
+}
+
+.photo-item {
+    width: 150px;
+    height: auto;
+    object-fit: contain;
+    border: none;
+    pointer-events: none;
+    display: block;
+}
+
+/* 任务列表 */
+.task-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.task-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(255,255,255,0.7);
+    padding: 15px;
+    border-radius: 12px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.task-info {
+    flex: 1;
+}
+
+.task-info h4 {
+    color: #555;
+    margin-bottom: 5px;
+}
+
+.task-info p {
+    font-size: 13px;
+    color: #888;
+}
+
+.task-action .primary-btn {
+    width: auto;
+    padding: 8px 16px;
+    font-size: 14px;
+}
+
+.task-action .primary-btn:disabled {
+    background: #e0e0e0;
+    color: #888;
+    cursor: not-allowed;
+    box-shadow: none;
+    transform: none;
+}
+
+/* ================= 桌宠模式 (Electron) ================= */
+body.transparent-mode {
+    background: transparent !important;
+    overflow: hidden;
+}
+
+body.transparent-mode .top-bar {
+    display: none !important;
+}
+
+#view-desktop-pet {
+    display: none;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    width: 100vw;
+}
+
+#view-desktop-pet.active {
+    display: flex;
+}
+
+.desktop-pet-drag {
+    position: relative;
+    -webkit-app-region: drag; /* 允许拖拽 */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 40px; /* 留出悬浮菜单的空间 */
+}
+
+.desktop-hover-menu {
+    display: none;
+    position: absolute;
+    top: 0px;
+    gap: 10px;
+    background: rgba(255, 255, 255, 0.9);
+    padding: 8px 12px;
+    border-radius: 20px;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+    -webkit-app-region: no-drag;
+    z-index: 100;
+}
+
+.desktop-pet-drag:hover .desktop-hover-menu {
+    display: flex;
+    animation: slideDown 0.2s ease-out;
+}
+
+.desktop-hover-menu button {
+    padding: 6px 12px;
+    font-size: 13px;
+    cursor: pointer;
+    -webkit-app-region: no-drag;
+}
+
+@keyframes slideDown {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* ================= 理科操场装饰（夜间霓虹风格） ================= */
+#sports1-decor {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    display: none;
+    background: linear-gradient(180deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+}
+
+/* 发光跑道 */
+.neon-track {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 50%;
+    background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+    border: 4px solid #00d4ff;
+    box-shadow: 0 0 20px #00d4ff, 0 0 40px #00d4ff, inset 0 0 20px rgba(0, 212, 255, 0.1);
+}
+
+/* 夜间灯光球场 */
+.neon-court {
+    position: absolute;
+    bottom: 10%;
+    left: 15%;
+    width: 70%;
+    height: 30%;
+    background: linear-gradient(180deg, #0f3460 0%, #16213e 100%);
+    border: 3px solid #f72585;
+    box-shadow: 0 0 20px #f72585, 0 0 40px #f72585, inset 0 0 20px rgba(247, 37, 133, 0.1);
+    border-radius: 10px;
+}
+
+/* 霓虹篮球架 */
+.neon-hoop {
+    position: absolute;
+    font-size: 80px;
+    bottom: 15%;
+    filter: drop-shadow(0 0 10px #ff006e) drop-shadow(0 0 20px #ff006e);
+    animation: neonPulse 2s ease-in-out infinite;
+}
+
+.hoop-left {
+    left: 10%;
+}
+
+.hoop-right {
+    right: 10%;
+    transform: scaleX(-1);
+}
+
+@keyframes neonPulse {
+    0%, 100% { filter: drop-shadow(0 0 10px #ff006e) drop-shadow(0 0 20px #ff006e); }
+    50% { filter: drop-shadow(0 0 20px #ff006e) drop-shadow(0 0 40px #ff006e); }
+}
+
+/* 霓虹看台 */
+.neon-stand {
+    position: absolute;
+    width: 15%;
+    height: 25%;
+    bottom: 5%;
+    background: linear-gradient(0deg, #7209b7 0%, #3a0ca3 50%, #4361ee 100%);
+    border-radius: 10px 10px 0 0;
+    box-shadow: 0 0 20px #7209b7, 0 0 40px #7209b7;
+    animation: standGlow 3s ease-in-out infinite;
+}
+
+.stand-left {
+    left: 2%;
+}
+
+.stand-right {
+    right: 2%;
+}
+
+@keyframes standGlow {
+    0%, 100% { box-shadow: 0 0 20px #7209b7, 0 0 40px #7209b7; }
+    50% { box-shadow: 0 0 30px #4361ee, 0 0 60px #4361ee; }
+}
+
+/* 星空背景 */
+.neon-star {
+    position: absolute;
+    font-size: 35px;
+    animation: starTwinkle 2s ease-in-out infinite;
+}
+
+.star-1 {
+    top: 5%;
+    left: 10%;
+    animation-delay: 0s;
+}
+
+.star-2 {
+    top: 12%;
+    left: 25%;
+    animation-delay: 0.5s;
+}
+
+.star-3 {
+    top: 8%;
+    left: 50%;
+    animation-delay: 1s;
+}
+
+.star-4 {
+    top: 15%;
+    left: 70%;
+    animation-delay: 1.5s;
+}
+
+.star-5 {
+    top: 6%;
+    left: 85%;
+    animation-delay: 0.7s;
+}
+
+@keyframes starTwinkle {
+    0%, 100% { opacity: 0.5; transform: scale(0.8); }
+    50% { opacity: 1; transform: scale(1.2); }
+}
+
+/* 悬浮星星灯 */
+.neon-lamp {
+    position: absolute;
+    font-size: 45px;
+    animation: lampFloat 4s ease-in-out infinite;
+    filter: drop-shadow(0 0 10px #7209b7) drop-shadow(0 0 20px #7209b7);
+}
+
+.lamp-1 {
+    top: 20%;
+    left: 15%;
+    animation-delay: 0s;
+}
+
+.lamp-2 {
+    top: 25%;
+    left: 50%;
+    transform: translateX(-50%);
+    animation-delay: 1.3s;
+}
+
+.lamp-3 {
+    top: 22%;
+    left: 80%;
+    animation-delay: 0.7s;
+}
+
+@keyframes lampFloat {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-15px); }
+}
+
+/* 音乐律动灯 */
+.neon-beat {
+    position: absolute;
+    font-size: 40px;
+    animation: beatPulse 1.5s ease-in-out infinite;
+    filter: drop-shadow(0 0 8px #f72585) drop-shadow(0 0 15px #f72585);
+}
+
+.beat-1 {
+    top: 40%;
+    left: 10%;
+    animation-delay: 0s;
+}
+
+.beat-2 {
+    top: 45%;
+    left: 50%;
+    transform: translateX(-50%);
+    animation-delay: 0.5s;
+}
+
+.beat-3 {
+    top: 42%;
+    left: 85%;
+    animation-delay: 1s;
+}
+
+@keyframes beatPulse {
+    0%, 100% { transform: scale(1); filter: drop-shadow(0 0 8px #f72585); }
+    50% { transform: scale(1.3); filter: drop-shadow(0 0 15px #00d4ff); }
+}
+
+/* 科幻计分板 */
+.neon-scoreboard {
+    position: absolute;
+    top: 10%;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 90px;
+    filter: drop-shadow(0 0 15px #00d4ff) drop-shadow(0 0 30px #00d4ff);
+    animation: scorePulse 3s ease-in-out infinite;
+}
+
+@keyframes scorePulse {
+    0%, 100% { filter: drop-shadow(0 0 15px #00d4ff) drop-shadow(0 0 30px #00d4ff); }
+    50% { filter: drop-shadow(0 0 25px #4cc9f0) drop-shadow(0 0 50px #4cc9f0); }
+}
+
+/* 野餐布样式（大草原） */
+.picnic-blanket {
+    position: absolute;
+    bottom: 12%;
+    left: 8%;
+    width: 220px;
+    height: 160px;
+    background: repeating-conic-gradient(#ff6b6b 0% 25%, #ffe66d 0% 50%);
+    background-size: 30px 30px;
+    border-radius: 10px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.2);
+    z-index: 3;
+}
+
+/* ================= 第一食堂装饰（极简干净版） ================= */
+#canteen1-decor {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    display: none;
+}
+
+/* 今日推荐菜单 */
+.canteen-menu {
+    position: absolute;
+    top: 0%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(255,255,255,0.9);
+    padding: 15px 30px;
+    border-radius: 20px;
+    font-size: 18px;
+    color: #666;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    z-index: 10;
+}
+
+/* 餐桌样式 */
+.canteen-table {
+    position: absolute;
+    width: 270px;
+    height: 150px;
+    background: linear-gradient(180deg, #f9f9f9 0%, #f0f0f0 100%);
+    border-radius: 10px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 30px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    z-index: 2;
+}
+
+.canteen-food {
+    font-size: 60px;
+}
+
+/* 餐桌位置 */
+.table-1 {
+    top: 35%;
+    left: 15%;
+}
+
+.table-2 {
+    top: 35%;
+    right: 15%;
+}
+
+.table-3 {
+    bottom: 25%;
+    left: 25%;
+}
+
+.table-4 {
+    bottom: 25%;
+    right: 25%;
+}
+
+/* 植物装饰 */
+.canteen-plant {
+    position: absolute;
+    font-size: 50px;
+    z-index: 2;
+}
+
+.plant-1 {
+    bottom: 10%;
+    left: 5%;
+    font-size: 150px;
+}
+
+.plant-2 {
+    bottom: 10%;
+    right: 5%;
+    font-size: 150px;
+}
+
+/* ================= 第二食堂装饰（网红打卡风格） ================= */
+#canteen2-decor {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    display: none;
+}
+
+/* 霓虹灯牌 */
+.neon-sign {
+    position: absolute;
+    top: 0%;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 32px;
+    font-weight: bold;
+    color: #ff6b9d;
+    text-shadow: 0 0 10px #ff6b9d, 0 0 20px #ff6b9d, 0 0 30px #ff6b9d;
+    animation: neonPulse 2s ease-in-out infinite;
+    z-index: 10;
+}
+
+@keyframes neonPulse {
+    0%, 100% { text-shadow: 0 0 10px #ff6b9d, 0 0 20px #ff6b9d; }
+    50% { text-shadow: 0 0 20px #ff6b9d, 0 0 40px #ff6b9d, 0 0 60px #ff6b9d; }
+}
+
+/* 打卡背景墙 */
+.photo-wall {
+    position: absolute;
+    top: 15%;
+    left: 10%;
+    right: 10%;
+    height: 120px;
+    background: linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%);
+    border-radius: 20px;
+    box-shadow: inset 0 2px 10px rgba(0,0,0,0.1);
+}
+
+/* 大理石餐桌 */
+.marble-table {
+    position: absolute;
+    width: 300px;
+    height: 180px;
+    background: linear-gradient(145deg, #ffffff 0%, #e8e8e8 100%);
+    border-radius: 15px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 38px;
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    z-index: 2;
+    border: 2px solid rgba(0,0,0,0.05);
+}
+
+.marble-table.table-1 {
+    top: 35%;
+    left: 15%;
+}
+
+.marble-table.table-2 {
+    top: 35%;
+    right: 15%;
+}
+
+.marble-table.table-3 {
+    bottom: 25%;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.table-decoration {
+    font-size: 75px;
+}
+
+.table-food {
+    font-size: 82px;
+}
+
+/* 干花装饰 */
+.dried-flower {
+    position: absolute;
+    font-size: 60px;
+    z-index: 2;
+}
+
+.dried-flower.flower-1 {
+    bottom: 12%;
+    left: 8%;
+}
+
+.dried-flower.flower-2 {
+    bottom: 12%;
+    right: 8%;
+}
+
+.dried-flower.flower-3 {
+    top: 55%;
+    left: 5%;
+}

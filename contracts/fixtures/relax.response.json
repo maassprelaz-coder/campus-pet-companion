@@ -1,0 +1,15 @@
+{
+  "schema_version": "0.1",
+  "mode": "mock",
+  "request_id": "example-request-relax",
+  "reply": "可以先停下来放松两分钟，愿意试试吗？",
+  "pet_action": "idle",
+  "strategy": "relax",
+  "suggestion": {
+    "suggestion_id": "example-suggestion-relax",
+    "task_template_id": "relax_2",
+    "title": "放松 2 分钟",
+    "duration_seconds": 120
+  },
+  "sources": []
+}

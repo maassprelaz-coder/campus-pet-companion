@@ -1,0 +1,12 @@
+{
+  "schema_version": "0.1",
+  "event_id": "example-listen-1",
+  "event_type": "chat",
+  "user_message": "今天有些累",
+  "scene": "dorm",
+  "mood": null,
+  "preferences": {
+    "proactive": true,
+    "remember": false
+  }
+}

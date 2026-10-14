@@ -1,0 +1,12 @@
+{
+  "schema_version": "0.1",
+  "event_id": "example-focus-1",
+  "event_type": "chat",
+  "user_message": "想静下心学习一会儿",
+  "scene": "library",
+  "mood": null,
+  "preferences": {
+    "proactive": true,
+    "remember": false
+  }
+}

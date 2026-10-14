@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CompanionEventV0.1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "event_id",
+    "event_type",
+    "user_message",
+    "scene",
+    "preferences"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "0.1"
+    },
+    "event_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100
+    },
+    "event_type": {
+      "enum": [
+        "chat",
+        "scene_enter",
+        "task_completed"
+      ]
+    },
+    "user_message": {
+      "type": "string",
+      "maxLength": 2000
+    },
+    "scene": {
+      "enum": [
+        "dorm",
+        "library",
+        "sports",
+        "canteen"
+      ]
+    },
+    "mood": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 50
+    },
+    "preferences": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "proactive",
+        "remember"
+      ],
+      "properties": {
+        "proactive": {
+          "type": "boolean"
+        },
+        "remember": {
+          "const": false
+        }
+      }
+    },
+    "task_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "task_completed"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "task_id"
+        ]
+      }
+    }
+  ]
+}

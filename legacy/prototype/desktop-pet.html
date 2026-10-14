@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>桌面宠物</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; user-select:none; }
+    body { background:transparent; width:100vw; height:100vh; display:flex; align-items:flex-end; justify-content:center; padding-bottom:10px; }
+    .drag-area { -webkit-app-region:drag; position:absolute; inset:0; }
+    .pet { width:80px; height:80px; position:relative; }
+    .pet img { width:100%; height:100%; object-fit:contain; }
+    .menu { position:absolute; bottom:100px; left:50%; transform:translateX(-50%); display:none; flex-direction:column; gap:6px; background:white; padding:8px; border-radius:10px; box-shadow:0 4px 10px rgba(0,0,0,0.1); -webkit-app-region:no-drag; }
+    .menu.show { display:flex; }
+    .menu button { padding:6px 10px; border:none; border-radius:6px; background:#f4f4f4; cursor:pointer; }
+    .menu button:hover { background:#ff9a76; color:white; }
+    .tip { position:absolute; top:-30px; background:#ff9a76; color:white; padding:3px 6px; border-radius:6px; font-size:12px; opacity:0; transition:0.3s; white-space:nowrap; }
+    .tip.show { opacity:1; }
+  </style>
+</head>
+<body>
+  <div class="drag-area"></div>
+  <div class="menu" id="menu">
+    <button id="touch">摸摸 (<span id="count">0</span>/10)</button>
+    <button id="back">返回游戏</button>
+  </div>
+  <div class="pet" id="pet">
+    <img id="petImg" src="" alt="桌宠">
+    <div class="tip" id="tip"></div>
+  </div>
+
+  <script>
+    const { ipcRenderer } = require('electron')
+    let count = 0
+
+    // 窗口加载完成后，主动向主进程请求宠物数据
+    window.onload = () => {
+      ipcRenderer.send('request-pet-data');
+    }
+
+    // 接收主进程发来的宠物数据
+    ipcRenderer.on('pet-updated', (e, petInfo) => {
+      console.log('收到宠物数据:', petInfo);
+      if (petInfo && petInfo.icon) {
+        document.getElementById('petImg').src = petInfo.icon;
+      } else {
+        // 终极兜底：直接用你项目里的默认图片
+        document.getElementById('petImg').src = './img/dog.png';
+      }
+    })
+
+    document.getElementById('pet').addEventListener('mouseenter', () => {
+      document.getElementById('menu').classList.add('show')
+    })
+    document.body.addEventListener('mouseleave', () => {
+      document.getElementById('menu').classList.remove('show')
+    })
+
+    document.getElementById('touch').onclick = () => {
+      count++;
+      document.getElementById('count').innerText = count;
+      if(count >= 10){
+        count = 0;
+        document.getElementById('count').innerText = 0;
+        ipcRenderer.send('add-coins-to-main', 2);
+        showTip('获得 2 翻译币！');
+      } else {
+        showTip('好舒服～');
+      }
+    }
+
+    document.getElementById('back').onclick = () => {
+      ipcRenderer.send('toggle-pet-mode', false)
+    }
+
+    function showTip(text) {
+      const t = document.getElementById('tip')
+      t.innerText = text
+      t.classList.add('show')
+      setTimeout(() => t.classList.remove('show'), 1500)
+    }
+  </script>
+</body>
+</html>

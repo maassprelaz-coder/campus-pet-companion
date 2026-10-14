@@ -1,0 +1,15 @@
+{
+  "schema_version": "0.1",
+  "mode": "mock",
+  "request_id": "example-request-focus",
+  "reply": "要不要先专注一小段时间？你可以自己决定。",
+  "pet_action": "happy",
+  "strategy": "focus",
+  "suggestion": {
+    "suggestion_id": "example-suggestion-focus",
+    "task_template_id": "focus_25",
+    "title": "专注 25 分钟",
+    "duration_seconds": 1500
+  },
+  "sources": []
+}
