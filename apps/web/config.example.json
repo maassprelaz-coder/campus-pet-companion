@@ -1,0 +1,4 @@
+{
+  "note": "复制成 config.json 后按本机情况修改；config.json 不入库，也不放任何密钥。",
+  "base_url": "http://127.0.0.1:8787"
+}

@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>校宠伴行 · 网页联调版</title>
+<link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="title-row">
+    <h1>校宠伴行（网页联调版）</h1>
+    <span id="mode-badge" class="badge" data-mode="unknown">未连接</span>
+    <span id="build-badge" class="badge badge-minor">网页版本 web-0.1.0</span>
+  </div>
+  <p id="mode-note" class="mode-note">尚未连接到服务。</p>
+</header>
+
+<main>
+  <section class="panel" aria-labelledby="conn-title">
+    <h2 id="conn-title">1. 连接服务</h2>
+    <label class="field">
+      <span>服务地址</span>
+      <input id="base-url-input" type="text" value="http://127.0.0.1:8787" autocomplete="off">
+    </label>
+    <div class="button-row">
+      <button id="connect-button" class="primary" type="button">连接服务</button>
+      <button id="health-button" class="secondary" type="button">服务自检</button>
+    </div>
+    <p id="health-text" class="muted"></p>
+    <p class="muted">本页只调用本队契约 contracts v0.1 草案；不含任何平台密钥，也不直连模型。真实服务地址由 A 确认后填入。</p>
+  </section>
+
+  <section class="panel" aria-labelledby="scene-title">
+    <h2 id="scene-title">2. 场景与偏好</h2>
+    <label class="field">
+      <span>当前场景</span>
+      <select id="scene-select">
+        <option value="dorm">宿舍</option>
+        <option value="library">图书馆</option>
+        <option value="sports">操场</option>
+        <option value="canteen">食堂</option>
+      </select>
+    </label>
+    <div class="button-row">
+      <button id="scene-button" class="secondary" type="button">进入场景（发送 scene_enter）</button>
+    </div>
+    <label class="check-row">
+      <input id="proactive-checkbox" type="checkbox" checked>
+      <span>允许在进入场景时主动给建议（preferences.proactive）</span>
+    </label>
+    <p id="remember-state" class="muted"></p>
+  </section>
+
+  <section class="panel" aria-labelledby="pet-title">
+    <h2 id="pet-title">3. 宠物与动作</h2>
+    <div id="pet-stage" class="pet-stage" data-action="none">
+      <p id="pet-action-label" class="pet-action-label">动作：尚未收到服务响应</p>
+      <p class="muted">动作只取契约白名单（idle/happy/think/sleep/eat/roll/sad）；素材仍在盘点许可，本版先用占位，不引用来源不明的旧图片与音频。</p>
+    </div>
+  </section>
+
+  <section class="panel" aria-labelledby="chat-title">
+    <h2 id="chat-title">4. 对话与回复</h2>
+    <form id="chat-form" class="chat-form">
+      <label class="field">
+        <span>想说的话（最长 2000 字）</span>
+        <textarea id="message-input" rows="3" placeholder="例如：今天有点累，想在图书馆安静一会儿"></textarea>
+      </label>
+      <div class="button-row">
+        <button id="send-button" class="primary" type="submit">发送</button>
+        <span class="muted">Ctrl + Enter 也可发送</span>
+      </div>
+      <p id="send-hint" class="muted"></p>
+    </form>
+    <ol id="chat-log" class="chat-log" aria-live="polite"></ol>
+  </section>
+  <section class="panel" aria-labelledby="suggestion-title">
+    <h2 id="suggestion-title">5. 建议：接受或拒绝</h2>
+    <div id="suggestion-region"></div>
+  </section>
+
+  <section class="panel" aria-labelledby="task-title">
+    <h2 id="task-title">6. 任务状态与完成反馈</h2>
+    <div id="task-region"></div>
+  </section>
+
+  <section class="panel" aria-labelledby="error-title">
+    <h2 id="error-title">7. 失败、等待与重试</h2>
+    <p class="muted">等待中按钮会禁用；失败会显示服务返回的错误码；可重试的错误会给出“重试”，并复用同一个 event_id 与幂等键。</p>
+    <div id="error-region"></div>
+  </section>
+
+  <section class="panel" aria-labelledby="source-title">
+    <h2 id="source-title">8. 来源引用</h2>
+    <div id="sources-region"></div>
+  </section>
+
+  <section class="panel" aria-labelledby="perm-title">
+    <h2 id="perm-title">9. 定位与摄像头授权</h2>
+    <p id="permission-location" class="muted"></p>
+    <p id="permission-camera" class="muted"></p>
+    <div class="button-row">
+      <button id="permission-location-deny" class="secondary" type="button">演练：我拒绝定位授权</button>
+      <button id="permission-camera-deny" class="secondary" type="button">演练：我拒绝摄像头授权</button>
+    </div>
+    <p id="permission-note" class="muted"></p>
+  </section>
+
+  <section class="panel" aria-labelledby="evidence-title">
+    <h2 id="evidence-title">10. 证据面板（录屏用）</h2>
+    <p id="evidence-event" class="mono"></p>
+    <p id="evidence-response" class="mono"></p>
+    <p id="evidence-build" class="mono"></p>
+    <p class="muted">这里只显示可公开的请求/响应摘要（不含消息原文以外任何隐私、也不含任何密钥），方便录屏时说明“同一版本、同一事件”。</p>
+  </section>
+
+  <section class="panel" aria-labelledby="states-title">
+    <h2 id="states-title">11. 联调时建议走一遍的状态</h2>
+    <ol class="checklist">
+      <li>未连接：页面显示“未连接”，发送按钮不可用。</li>
+      <li>连接成功：徽标显示 mock 或 live，会话已建立。</li>
+      <li>正常回复：图书馆场景聊天得到建议，接受后出现任务。</li>
+      <li>拒绝路径：换一次建议点“拒绝”，确认没有发出请求、没有任务。</li>
+      <li>无建议：把场景切到宿舍或关闭主动建议后“进入场景”，确认没有编造任务。</li>
+      <li>刷新恢复：刷新页面，确认按任务标识恢复状态。</li>
+      <li>失败重试：停掉服务再发一次，确认出现 NETWORK_UNREACHABLE 与“重试”；重启服务后重试不重复生效。</li>
+      <li>权限拒绝：点两个“演练：我拒绝授权”，确认聊天与任务照常可用。</li>
+    </ol>
+  </section>
+</main>
+
+<footer class="footer">
+  <p class="muted">提交边界：mock 回复只能用于联调，不能作为真实平台效果、试点成效或成片素材；素材与校园事实以来源登记表和 A 的核实结果为准，本页不写未核实来源。</p>
+  <p class="muted">本页不新增手机 App、不做桌面打包，也不处理真实密钥与私密日记。</p>
+</footer>
+</body>
+</html>
