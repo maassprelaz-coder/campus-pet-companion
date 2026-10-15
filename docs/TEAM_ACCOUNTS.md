@@ -1,15 +1,10 @@
-# 成员账号与访问状态
+# 当前两人及访问记录
 
-2026-10-14核实：Seventy的Write协作邀请已发出，当前为待接受；不能据此说他已经加入仓库。
+2026-10-15按用户要求重排：只有负责人和Seventy，不再等待其他账号，不因计划变更自动撤销任何人的权限。
 
-| 成员 | GitHub用户名 | 负责范围 | 访问状态 |
+| 成员 | GitHub | 当前职责 | 访问记录 |
 | --- | --- | --- | --- |
-| 你 | maassprelaz-coder | 联通、合并、提交 | 仓库所有者 |
-| Seventy | zhaozishi123 | 网页与宠物交互 | Write邀请已发，等待接受 |
-| 张祺昌 | 待提供 | GeniOS | 尚未邀请 |
-| D | 待提供，可文件夹交付 | 美术资源 | 尚未邀请 |
-| E | 待提供，可文件夹交付 | 校园资料、试用、材料 | 尚未邀请 |
+| 你 A | maassprelaz-coder | 智能体、知识、连接、提交 | 仓库所有者 |
+| Seventy B | zhaozishi123 | 网页、素材、试用、材料 | 10月14日已发Write邀请；当时待接受，本次未重新核实接受状态 |
 
-Seventy用自己的 `zhaozishi123` 账号登录，打开[邀请入口](https://github.com/maassprelaz-coder/campus-pet-companion/invitations)接受；然后先看[B任务卡](assignments/B_web.md)、[已有项目评估](EXISTING_PROJECT.md)与[交接明细](HANDOFFS.md)。请反馈“范围是否可行、哪些旧模块值得保留/替换、需要A/C/D提供什么”，再按任务安排开工。
-
-另外两位非技术协助者可以交结构清楚的文件夹，由A入库，不要求为了提交资源先学Git。岗位姓名尚未全部确认，不自行把泽祎等姓名对应到D/E。
+如尚未加入，使用自己的账号打开[邀请入口](https://github.com/maassprelaz-coder/campus-pet-companion/invitations)。加入后看[两人计划](TEAM_PLAN.md)、[B任务](assignments/B_web.md)、[交接表](HANDOFFS.md)。旧角色卡保留说明入口，不再作为当前任务。
