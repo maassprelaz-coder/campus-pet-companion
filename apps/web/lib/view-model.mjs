@@ -94,7 +94,7 @@ export function suggestionView(suggestion, { pending = false, decision = 'pendin
   const decided = decision !== 'pending';
   let note = '接受后才会创建任务；拒绝不会创建任务，也不会扣分。';
   if (decision === 'accepted') note = '已接受：任务已创建，积分由服务端规则结算，页面不会自己加积分。';
-  if (decision === 'rejected') note = '已拒绝：本页没有发送任何请求，也没有创建任务，之后不会再催。';
+  if (decision === 'rejected') note = '已拒绝：没有创建任务，也不会扣分。';
   return {
     suggestionId: suggestion.suggestion_id,
     templateId: suggestion.task_template_id,
@@ -113,9 +113,13 @@ export function emptySuggestionNote({ proactive }) {
     : '主动建议已关闭：服务端本次不会给建议，你仍然可以自己聊天或进入场景。';
 }
 
-export function taskView(task) {
+export function taskView(task, { serverTime = null, elapsedMs = 0 } = {}) {
   if (!task) return null;
   const status = task.status === 'active' || task.status === 'completed' ? task.status : 'unknown';
+  const endMs = Date.parse(task.ends_at);
+  const serverMs = Date.parse(serverTime);
+  const remainingSeconds = Number.isFinite(endMs) && Number.isFinite(serverMs)
+    ? Math.max(0, Math.ceil((endMs - serverMs - Math.max(0, elapsedMs)) / 1000)) : null;
   return {
     taskId: task.task_id,
     templateId: task.template_id ?? null,
@@ -124,18 +128,19 @@ export function taskView(task) {
     statusLabel: TASK_STATUS_LABELS[status],
     startedAt: task.started_at ?? null,
     durationText: durationText(task.duration_seconds),
-    canComplete: status === 'active',
+    remainingSeconds,
+    canComplete: status === 'active' && (remainingSeconds === null || remainingSeconds === 0),
     isCompleted: status === 'completed',
   };
 }
 
-export function pointsNotice(receipt, mode) {
+export function pointsNotice(receipt, mode, { timerEnforced = false } = {}) {
   const points = Number.isFinite(receipt?.points_awarded) ? receipt.points_awarded : null;
   const already = receipt?.already_completed === true;
   if (mode === 'mock') {
     return {
       simulated: true,
-      text: `${already ? '重复完成请求：' : ''}模拟完成，本次积分 ${points ?? 0}。mock 不校验时长、固定不加分，不计入成效统计。`,
+      text: `${already ? '重复完成请求：' : ''}模拟完成，本次积分 ${points ?? 0}。${timerEnforced ? '本地任务服务已校验时长，模型回复为合成内容' : '旧mock不校验时长、固定不加分'}，不计入成效统计。`,
     };
   }
   return {

@@ -66,6 +66,16 @@ export function normalizeBaseUrl(value) {
   return text;
 }
 
+// A deployed HTTPS page uses its own backend origin, including on phones. Local mock setup stays configurable.
+export function serviceBaseUrlForPage(pageUrl, localBaseUrl = DEFAULT_BASE_URL) {
+  try {
+    const page = new URL(pageUrl);
+    if (page.protocol === 'https:' && !['localhost', '127.0.0.1', '[::1]'].includes(page.hostname))
+      return page.origin;
+  } catch { /* Non-web previews keep the local development default. */ }
+  return normalizeBaseUrl(localBaseUrl);
+}
+
 // 组事件。只发送契约允许的字段，preferences.remember 固定 false（记忆接口本轮关闭）。
 export function buildEvent({
   eventId,
@@ -130,7 +140,7 @@ export function normalizeError(status, payload, { networkFailure = false } = {})
     status,
     code,
     message,
-    retriable: SERVICE_RETRYABLE_STATUS.has(status),
+    retriable: SERVICE_RETRYABLE_STATUS.has(status) || status === 409 && ['REQUEST_IN_PROGRESS', 'CONTEXT_CHANGED'].includes(code),
     requiresNewSession: status === 401,
   });
 }
@@ -149,31 +159,38 @@ export function summarizeResponse(payload) {
 }
 
 export class CompanionClient {
-  constructor({ baseUrl = DEFAULT_BASE_URL, fetchImpl = globalThis.fetch } = {}) {
+  constructor({ baseUrl = DEFAULT_BASE_URL, fetchImpl = (...args) => globalThis.fetch(...args) } = {}) {
     this.baseUrl = normalizeBaseUrl(baseUrl);
     this.fetchImpl = fetchImpl;
     this.sessionId = null;
+    this.cookieSession = false;
+    this.useCookies = false;
   }
 
   setBaseUrl(baseUrl) {
     this.baseUrl = normalizeBaseUrl(baseUrl);
     this.sessionId = null;
+    this.cookieSession = false;
+    this.useCookies = false;
   }
 
   setSessionId(sessionId) {
     this.sessionId = sessionId || null;
   }
 
+  get hasSession() { return this.cookieSession || Boolean(this.sessionId); }
+
   async request(path, { method = 'GET', body, idempotencyKey, requireSession = true } = {}) {
     const headers = {};
     const init = { method, headers };
+    if (this.useCookies) init.credentials = 'include';
     if (body !== undefined) {
       headers['Content-Type'] = 'application/json';
       init.body = JSON.stringify(body);
     }
     if (idempotencyKey) headers['Idempotency-Key'] = idempotencyKey;
     if (requireSession) {
-      if (!this.sessionId) {
+      if (!this.hasSession) {
         throw new ApiError({
           status: 401,
           code: 'NO_LOCAL_SESSION',
@@ -181,7 +198,7 @@ export class CompanionClient {
           requiresNewSession: true,
         });
       }
-      headers['X-Demo-Session'] = this.sessionId;
+      if (!this.useCookies) headers['X-Demo-Session'] = this.sessionId;
     }
 
     let response;
@@ -201,13 +218,20 @@ export class CompanionClient {
     return payload;
   }
 
-  health() {
-    return this.request('/health', { requireSession: false });
+  async health() {
+    const payload = await this.request('/health', { requireSession: false });
+    this.useCookies = payload?.task_service === true;
+    return payload;
   }
 
   async openSession() {
     const payload = await this.request('/api/v1/sessions', { method: 'POST', body: {}, requireSession: false });
     const sessionId = payload?.demo_session;
+    if (this.useCookies && payload?.preferences?.remember === false && 'active_task' in payload) {
+      this.cookieSession = true;
+      this.sessionId = null;
+      return payload;
+    }
     if (typeof sessionId !== 'string' || sessionId.length === 0) {
       throw new ApiError({
         status: 502,
@@ -238,6 +262,20 @@ export class CompanionClient {
 
   getTask(taskId) {
     return this.request(`/api/v1/tasks/${encodeURIComponent(taskId)}`);
+  }
+
+  getSession() { return this.request('/api/v1/session'); }
+
+  rejectSuggestion(suggestionId) {
+    return this.request(`/api/v1/suggestions/${encodeURIComponent(suggestionId)}/reject`, {
+      method: 'POST', body: {}, idempotencyKey: shortKey('reject', suggestionId),
+    });
+  }
+
+  savePreferences(proactive, idempotencyKey) {
+    return this.request('/api/v1/preferences', {
+      method: 'POST', body: { proactive, remember: false }, idempotencyKey,
+    });
   }
 
   completeTask(taskId) {

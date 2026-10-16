@@ -23,6 +23,7 @@ function fakeFetch(handler) {
       method: init.method ?? 'GET',
       headers: init.headers ?? {},
       body: init.body ? JSON.parse(init.body) : undefined,
+      credentials: init.credentials,
     });
     const status = result.status ?? 200;
     return { ok: status >= 200 && status < 300, status, json: async () => result.payload ?? {} };
@@ -37,6 +38,20 @@ const baseEvent = {
   userMessage: '想静下心学习一会儿',
   proactive: true,
 };
+
+test('默认请求保留浏览器fetch所需的全局接收者', async () => {
+  const previous = globalThis.fetch;
+  try {
+    globalThis.fetch = async function () {
+      assert.equal(this, globalThis, '浏览器内置fetch不能以CompanionClient实例作为接收者');
+      return { ok: true, status: 200, json: async () => ({ mode: 'mock' }) };
+    };
+    const client = new CompanionClient();
+    assert.equal((await client.health()).mode, 'mock');
+  } finally {
+    globalThis.fetch = previous;
+  }
+});
 
 test('buildEvent 只发送契约字段，remember 固定 false', () => {
   const event = buildEvent(baseEvent);
@@ -199,4 +214,28 @@ test('summarizeResponse 只保留可公开摘要', () => {
   });
   assert.equal('reply' in summary, false);
   assert.equal(summarizeResponse(null), null);
+});
+
+test('Cookie任务服务无需demo_session，所有后续请求携带Cookie且无模拟令牌头', async () => {
+  const f = fakeFetch(url => ({ payload: url.endsWith('/health') ? { mode: 'live', task_service: true }
+    : { mode: 'live', preferences: { proactive: true, remember: false }, active_task: null } }));
+  const client = new CompanionClient({ fetchImpl: f.fetchImpl });
+  await client.health();
+  await client.openSession();
+  assert.equal(client.hasSession, true);
+  assert.equal(client.sessionId, null);
+  await client.rejectSuggestion('suggestion-1');
+  await client.savePreferences(false, 'pref-1');
+  await client.getSession();
+  for (const call of f.calls.slice(1)) {
+    assert.equal(call.credentials, 'include');
+    assert.equal('X-Demo-Session' in call.headers, false);
+  }
+  assert.equal(f.calls[2].headers['Idempotency-Key'], 'reject:suggestion-1');
+  assert.deepEqual(f.calls[3].body, { proactive: false, remember: false });
+});
+
+test('仅进行中/上下文变化的409可重试，业务冲突仍明确拒绝', () => {
+  for (const code of ['REQUEST_IN_PROGRESS', 'CONTEXT_CHANGED']) assert.equal(normalizeError(409, { error: { code } }).retriable, true);
+  for (const code of ['KEY_REUSED', 'TASK_TOO_EARLY', 'SUGGESTION_EXPIRED']) assert.equal(normalizeError(409, { error: { code } }).retriable, false);
 });

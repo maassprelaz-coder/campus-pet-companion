@@ -33,7 +33,8 @@ test('页面不直连模型、不出现密钥或鉴权头', () => {
 });
 
 test('页面不加载外部 CDN 或第三方脚本', () => {
-  assert.equal(/<script[^>]+src=/.test(pageHtml), false, 'index.html 不应引用外部脚本');
+  const scriptTags = pageHtml.match(/<script\b[^>]*>/gi) ?? [];
+  assert.deepEqual(scriptTags, ['<script type="module" src="./app.js">'], '只加载本页模块入口，禁止第三方脚本');
   assert.equal(/https?:\/\/(?!127\.0\.0\.1|localhost)/.test(pageHtml.replace(/<a[^>]*>/g, '')), false);
 });
 
@@ -49,14 +50,14 @@ test('关键交互元素与标识都存在', () => {
 test('只有点发送或回车才发请求，草稿不会被自动发送', () => {
   assert.ok(pageJs.includes("el('chat-form')?.addEventListener('submit'"));
   assert.ok(pageJs.includes("(event.ctrlKey || event.metaKey) && event.key === 'Enter'"));
-  for (const pattern of ['setInterval', 'setTimeout']) {
-    assert.equal(pageJs.includes(pattern), false, `不应出现定时自动发送相关调用 ${pattern}`);
-  }
+  const countdown = pageJs.slice(pageJs.indexOf('function updateCountdown'), pageJs.indexOf('function renderTask'));
+  for (const call of ['client.', 'sendChat(', 'dispatch(']) assert.equal(countdown.includes(call), false, '倒计时只能显示，不能发送用户内容');
 });
 
-test('拒绝建议不调用接口，也不在页面结算积分', () => {
+test('拒绝建议不会接受/完成任务，也不在页面结算积分', () => {
   const rejectBlock = pageJs.slice(pageJs.indexOf('function rejectSuggestion'), pageJs.indexOf('async function completeTask'));
-  assert.equal(rejectBlock.includes('client.'), false, '拒绝路径不应调用任何接口');
+  assert.equal(rejectBlock.includes('client.acceptSuggestion'), false, '拒绝不能创建任务');
+  assert.equal(rejectBlock.includes('client.completeTask'), false, '拒绝不能完成任务');
   assert.equal(pageJs.includes('points_awarded +'), false);
   assert.equal(/points\s*=\s*\d/.test(pageJs), false);
 });

@@ -4,10 +4,15 @@
   "private": true,
   "type": "module",
   "engines": {
-    "node": ">=22"
+    "node": ">=24"
   },
   "scripts": {
     "mock": "node tools/mock-api.mjs",
-    "check": "node --test tools/mock-api.test.mjs"
+    "check": "node --test tools/mock-api.test.mjs tests/integration/*.test.mjs apps/web/tests/**/*.test.mjs",
+    "check:agent": "node --test tests/integration/agent-boundary.test.mjs",
+    "check:tasks": "node --test tests/integration/task-api.test.mjs",
+    "api": "node services/api/api-server.mjs",
+    "api:demo": "node services/api/demo-server.mjs",
+    "api:production": "node services/api/production-server.mjs"
   }
 }

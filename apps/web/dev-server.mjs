@@ -24,10 +24,40 @@ const CONTENT_TYPES = {
   '.mp3': 'audio/mpeg',
 };
 
-export function createStaticServer({ root = DEFAULT_ROOT } = {}) {
+export function createStaticServer({ root = DEFAULT_ROOT, taskApiOrigin = null } = {}) {
   const base = resolve(root);
-  return http.createServer((request, response) => {
+  const upstream = taskApiOrigin ? new URL(taskApiOrigin) : null;
+  if (upstream && (upstream.protocol !== 'http:' || !['127.0.0.1', 'localhost'].includes(upstream.hostname)
+    || upstream.username || upstream.password || upstream.pathname !== '/' || upstream.search || upstream.hash)) {
+    throw new Error('Task proxy only accepts a local HTTP service origin');
+  }
+  const server = http.createServer((request, response) => {
     const url = new URL(request.url, 'http://127.0.0.1');
+    if (upstream && (url.pathname === '/health' || url.pathname.startsWith('/api/v1/'))) {
+      const port = server.address()?.port;
+      if (![`127.0.0.1:${port}`, `localhost:${port}`].includes(request.headers.host)) {
+        response.writeHead(403).end();
+        return;
+      }
+      const headers = {};
+      for (const name of ['cookie', 'content-type', 'idempotency-key', 'origin', 'sec-fetch-site']) {
+        if (request.headers[name]) headers[name] = request.headers[name];
+      }
+      const forwarded = http.request(new URL(url.pathname + url.search, upstream), {
+        method: request.method, headers,
+      }, incoming => {
+        response.writeHead(incoming.statusCode, incoming.headers);
+        incoming.pipe(response);
+      });
+      forwarded.setTimeout(30000, () => forwarded.destroy());
+      forwarded.on('error', () => {
+        if (response.headersSent) { response.destroy(); return; }
+        response.writeHead(502, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+        response.end(JSON.stringify({ error: { code: 'LOCAL_SERVICE_UNAVAILABLE', message: '本机任务服务未启动或暂时不可用' } }));
+      });
+      request.pipe(forwarded);
+      return;
+    }
     let pathname = decodeURIComponent(url.pathname);
     if (pathname === '/' || pathname === '') pathname = '/index.html';
 
@@ -57,14 +87,17 @@ export function createStaticServer({ root = DEFAULT_ROOT } = {}) {
     });
     createReadStream(target).pipe(response);
   });
+  return server;
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const port = Number(process.env.PORT ?? 5173);
   const host = process.env.HOST ?? '127.0.0.1';
-  createStaticServer().listen(port, host, () => {
+  createStaticServer({ taskApiOrigin: process.env.TASK_API_ORIGIN ?? null }).listen(port, host, () => {
     console.log(`网页联调地址：http://${host}:${port}/`);
-    console.log('提示：业务服务需另行启动（根目录 npm run mock，监听 127.0.0.1:8787）。');
+    console.log(process.env.TASK_API_ORIGIN
+      ? `本机业务转发已启用：${process.env.TASK_API_ORIGIN}，页面服务地址可填 http://${host}:${port}`
+      : '提示：业务服务需另行启动（根目录 npm run mock，监听 127.0.0.1:8787）。');
     console.log('请用这个 http 地址打开页面，不要用 file:// 直接双击 index.html。');
   });
 }

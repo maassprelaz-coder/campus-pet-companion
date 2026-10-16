@@ -8,10 +8,11 @@ import {
   buildEvent,
   newEventId,
   summarizeResponse,
+  serviceBaseUrlForPage,
 } from './lib/api.mjs';
 import * as view from './lib/view-model.mjs';
 
-const BUILD_ID = 'web-0.1.0';
+const BUILD_ID = 'web-0.1.2-domain';
 const BASE_URL_KEY = 'campus-pet-web-base-url';
 const PROACTIVE_KEY = 'campus-pet-web-proactive';
 const TASK_KEY = 'campus-pet-web-task-id';
@@ -22,6 +23,9 @@ const state = {
   scene: 'dorm',
   proactive: true,
   remember: false,
+  agentConfigured: null,
+  serverTime: null,
+  clockObservedAt: 0,
   pending: false,
   suggestion: null,
   decision: 'pending',
@@ -122,13 +126,17 @@ function renderConnection() {
     node.dataset.mode = badge.mode;
   }
   setText(el('mode-note'), view.modeNotice(state.mode));
-  setText(el('health-text'), `服务地址：${state.baseUrl}｜本地会话：${client.sessionId ? '已建立' : '未建立'}`);
+  setText(el('health-text'), `服务地址：${state.baseUrl}｜本地会话：${client.hasSession ? '已建立' : '未建立'}`);
+  if (state.agentConfigured === false) setText(el('mode-note'), '任务服务已连接，智能体暂未接通。聊天与新建议暂不可用，已开始的任务仍可查询和完成。');
   setText(el('build-badge'), `网页版本 ${BUILD_ID}`);
 }
 
 function renderControls() {
   if (el('scene-select')) el('scene-select').value = state.scene;
   if (el('proactive-checkbox')) el('proactive-checkbox').checked = state.proactive;
+  if (el('proactive-checkbox')) el('proactive-checkbox').disabled = state.pending;
+  if (el('connect-button')) el('connect-button').disabled = state.pending;
+  if (el('health-button')) el('health-button').disabled = state.pending;
   setText(el('remember-state'), '记忆接口本轮关闭：本页固定发送 remember = false，不做长期记忆。');
 
   const hint = view.validateMessage(el('message-input')?.value ?? '');
@@ -138,8 +146,8 @@ function renderControls() {
       ? `已输入 ${hint.value.length}/2000 字，点“发送”才会发给服务（不会自动发送草稿）。`
       : hint.error;
   setText(el('send-hint'), hintText);
-  if (el('send-button')) el('send-button').disabled = view.sendLocked({ pending: state.pending, mode: state.mode });
-  if (el('scene-button')) el('scene-button').disabled = state.pending;
+  if (el('send-button')) el('send-button').disabled = state.agentConfigured === false || view.sendLocked({ pending: state.pending, mode: state.mode });
+  if (el('scene-button')) el('scene-button').disabled = state.pending || state.agentConfigured === false;
 }
 
 function renderSuggestion() {
@@ -172,11 +180,32 @@ function renderSuggestion() {
   region.appendChild(create('p', 'muted', card.note));
 }
 
+function currentTaskView() {
+  return view.taskView(state.task, { serverTime: state.serverTime, elapsedMs: Math.max(0, performance.now() - state.clockObservedAt) });
+}
+
+function observeServerTime(payload) {
+  if (typeof payload?.server_time === 'string') {
+    state.serverTime = payload.server_time;
+    state.clockObservedAt = performance.now();
+  }
+}
+
+function updateCountdown() {
+  const task = currentTaskView();
+  const seconds = task?.remainingSeconds;
+  setText(el('focus-countdown'), seconds === null || seconds === undefined ? '' :
+    task.isCompleted ? '这次专注已完成。' : seconds > 0
+      ? `还剩 ${Math.floor(seconds / 60)} 分 ${String(seconds % 60).padStart(2, '0')} 秒`
+      : '专注时长已结束，可以确认完成。');
+  if (el('complete-button')) el('complete-button').disabled = !task?.canComplete || state.pending;
+}
+
 function renderTask() {
   const region = el('task-region');
   if (!region) return;
   region.replaceChildren();
-  const task = view.taskView(state.task);
+  const task = currentTaskView();
   if (!task) {
     region.appendChild(create('p', 'muted', '当前没有任务。接受建议后才会创建任务，页面不会自己新建。'));
     return;
@@ -201,6 +230,11 @@ function renderTask() {
   actions.appendChild(refresh);
   actions.appendChild(complete);
   region.appendChild(actions);
+  const countdown = create('p', 'focus-countdown');
+  countdown.id = 'focus-countdown';
+  countdown.setAttribute('aria-live', 'off');
+  region.appendChild(countdown);
+  updateCountdown();
   region.appendChild(create('p', 'muted', '积分只按服务端返回的 receipt 显示；页面不自行加积分，也不接受客户端传入金额。'));
 }
 
@@ -291,8 +325,15 @@ async function connectSession({ silent = false } = {}) {
   writeStorage(window.localStorage, BASE_URL_KEY, state.baseUrl);
 
   const health = await client.health();
-  await client.openSession();
+  const session = await client.openSession();
   state.mode = typeof health?.mode === 'string' ? health.mode : state.mode;
+  state.agentConfigured = typeof health?.agent_configured === 'boolean' ? health.agent_configured : null;
+  if (client.useCookies) {
+    state.task = session.active_task ?? session.last_completed_task ?? null;
+    state.proactive = session.preferences.proactive;
+    observeServerTime(session);
+    writeStorage(window.sessionStorage, TASK_KEY, state.task?.task_id ?? null);
+  }
   if (!silent) {
     logLine(`已连接 ${state.baseUrl}（mode=${state.mode}），本地会话已建立。`, 'ok');
   }
@@ -395,9 +436,14 @@ function acceptSuggestion() {
   if (typeof suggestionId !== 'string' || suggestionId.length === 0) return null;
   return dispatch({
     label: '接受建议',
-    run: () => client.acceptSuggestion(suggestionId),
+    recordResponse: false,
+    run: async () => {
+      const accepted = await client.acceptSuggestion(suggestionId);
+      return client.useCookies ? client.getTask(accepted.task.task_id) : accepted;
+    },
     apply: payload => {
       state.task = payload?.task ?? null;
+      observeServerTime(payload);
       state.decision = 'accepted';
       writeStorage(window.sessionStorage, TASK_KEY, state.task?.task_id ?? null);
       const task = view.taskView(state.task);
@@ -406,9 +452,16 @@ function acceptSuggestion() {
   });
 }
 
-// 拒绝不调用任何接口：不创建任务、不扣分、不再催。
+// Cookie服务保存拒绝与抑制状态；旧mock继续只在页面拒绝。
 function rejectSuggestion() {
   if (!state.suggestion) return;
+  if (client.useCookies) {
+    const id = state.suggestion.suggestion_id;
+    return dispatch({ label: '拒绝建议', recordResponse: false, run: () => client.rejectSuggestion(id), apply: () => {
+      state.decision = 'rejected';
+      logLine('已拒绝该建议，暂时不再推荐新任务；没有创建任务或扣分。', 'ok');
+    } });
+  }
   state.decision = 'rejected';
   state.retry = null;
   logLine('已拒绝该建议：本页没有发送任何请求，也没有创建任务，不扣分，之后不会再催。', 'warn');
@@ -421,11 +474,14 @@ async function completeTask() {
 
   const completed = await dispatch({
     label: '完成任务',
+    recordResponse: false,
+    retryRun: completeTask,
     run: () => client.completeTask(taskId),
     apply: payload => {
       state.task = payload?.task ?? state.task;
+      observeServerTime(payload);
       writeStorage(window.sessionStorage, TASK_KEY, state.task?.task_id ?? null);
-      const notice = view.pointsNotice(payload?.receipt, state.mode);
+      const notice = view.pointsNotice(payload?.receipt, state.mode, { timerEnforced: client.useCookies });
       logLine(`任务状态：${view.taskView(state.task)?.statusLabel ?? '未知'}。${notice.text}`, notice.simulated ? 'warn' : 'ok');
       if (typeof payload?.warning === 'string') logLine(`服务提示：${payload.warning}`, 'warn');
     },
@@ -461,9 +517,10 @@ function restoreTask(announce = false) {
   return dispatch({
     label: '恢复任务状态',
     recordResponse: false,
-    run: () => client.getTask(taskId),
+    run: () => client.useCookies ? client.getSession() : client.getTask(taskId),
     apply: payload => {
-      state.task = payload?.task ?? null;
+      state.task = client.useCookies ? payload.active_task ?? payload.last_completed_task ?? null : payload?.task ?? null;
+      observeServerTime(payload);
       writeStorage(window.sessionStorage, TASK_KEY, state.task?.task_id ?? null);
       const task = view.taskView(state.task);
       logLine(`已按任务标识恢复状态：${task?.taskId ?? '（无）'}｜${task?.statusLabel ?? '未知'}。`, 'ok');
@@ -476,7 +533,7 @@ function retryLast() {
     logLine('没有可重试的请求。', 'warn');
     return null;
   }
-  return dispatch(state.retry);
+  return state.retry.retryRun ? state.retry.retryRun() : dispatch(state.retry);
 }
 
 function recordPermissionDenied(scope) {
@@ -499,6 +556,10 @@ function wireEvents() {
       state.baseUrl = client.baseUrl;
       writeStorage(window.localStorage, BASE_URL_KEY, state.baseUrl);
       state.mode = 'unknown';
+      state.agentConfigured = null;
+      state.task = null;
+      state.suggestion = null;
+      state.serverTime = null;
       logLine(`服务地址改为 ${state.baseUrl}，请重新点“连接服务”。`, 'info');
     } catch (error) {
       showError(error);
@@ -511,6 +572,18 @@ function wireEvents() {
   });
   el('scene-button')?.addEventListener('click', () => enterScene());
   el('proactive-checkbox')?.addEventListener('change', event => {
+    if (client.useCookies && client.hasSession) {
+      const proactive = event.target.checked;
+      const previous = state.proactive;
+      state.proactive = proactive;
+      const key = `preferences:${newEventId()}`;
+      return dispatch({ label: '保存主动建议偏好', recordResponse: false, run: () => client.savePreferences(proactive, key), apply: payload => {
+        state.proactive = payload.preferences.proactive;
+        writeStorage(window.localStorage, PROACTIVE_KEY, String(state.proactive));
+        if (!state.proactive) { state.suggestion = null; state.decision = 'rejected'; }
+        logLine(`主动建议已${state.proactive ? '开启' : '关闭'}。`, 'ok');
+      } }).then(payload => { if (!payload) { state.proactive = previous; render(); } });
+    }
     state.proactive = event.target.checked;
     writeStorage(window.localStorage, PROACTIVE_KEY, String(state.proactive));
     logLine(`主动建议已${state.proactive ? '开启' : '关闭'}：进入场景时会把该设置作为 preferences.proactive 发给服务。`, 'info');
@@ -536,6 +609,7 @@ async function init() {
   if (configUrl) state.baseUrl = configUrl;
   loadStoredPrefs();
   try {
+    state.baseUrl = serviceBaseUrlForPage(window.location.href, state.baseUrl);
     client.setBaseUrl(state.baseUrl);
   } catch {
     state.baseUrl = DEFAULT_BASE_URL;
@@ -544,7 +618,9 @@ async function init() {
   if (el('base-url-input')) el('base-url-input').value = state.baseUrl;
   wireEvents();
   render();
-  logLine(`页面已就绪（${BUILD_ID}）。只用 contracts v0.1 草案接口；服务未启动时请先在本机运行 npm run mock（8787），再点“连接服务”。`, 'info');
+  logLine(state.baseUrl === window.location.origin && window.location.protocol === 'https:'
+    ? '页面已就绪，正在连接校宠伴行服务。'
+    : `页面已就绪（${BUILD_ID}）。本机联调请先启动服务，再点“连接服务”。`, 'info');
   try {
     await connectSession({ silent: true });
     await restoreTask(false);
@@ -556,3 +632,6 @@ async function init() {
 }
 
 init();
+
+// Display only. This timer never sends input or decides whether the business task is complete.
+setInterval(updateCountdown, 1000);

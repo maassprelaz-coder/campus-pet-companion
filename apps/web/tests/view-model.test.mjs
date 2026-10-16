@@ -13,6 +13,18 @@ test('模式徽标与说明区分模拟、真实与未连接', () => {
   assert.match(view.modeNotice('unknown'), /尚未连接/);
 });
 
+test('有服务端时间时，页面倒计时跨后台间隔恢复，提前不开放完成按钮', () => {
+  const task = { task_id: 'timer', template_id: 'focus_25', status: 'active', duration_seconds: 1500,
+    ends_at: '2026-10-16T00:25:00Z' };
+  const time = { serverTime: '2026-10-16T00:00:00Z' };
+  const first = view.taskView(task, time);
+  assert.equal(first.remainingSeconds, 1500);
+  assert.equal(first.canComplete, false);
+  assert.equal(view.taskView(task, { ...time, elapsedMs: 1499999 }).canComplete, false);
+  assert.equal(view.taskView(task, { ...time, elapsedMs: 1500000 }).canComplete, true);
+  assert.equal(view.taskView({ ...task, status: 'completed' }, { ...time, elapsedMs: 1500000 }).canComplete, false);
+});
+
 test('动作、场景、策略都能翻译且不吞掉未知值', () => {
   assert.equal(view.petActionLabel('happy'), '开心');
   assert.match(view.petActionLabel('dance'), /未识别动作（dance）/);
@@ -51,7 +63,7 @@ test('建议卡片在等待与已决定时禁用按钮', () => {
 
   const rejected = view.suggestionView(suggestion, { decision: 'rejected' });
   assert.equal(rejected.rejectDisabled, true);
-  assert.match(rejected.note, /没有发送任何请求/);
+  assert.match(rejected.note, /没有创建任务/);
 
   assert.equal(view.suggestionView(null), null);
 });

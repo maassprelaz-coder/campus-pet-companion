@@ -1,1 +1,4 @@
 id,title,campus,fact,source_url,verified_on,verified_by,status
+NK-LIB-HOME,南开大学图书馆,全校_馆舍需澄清,官网设开放时间入馆须知和座位预约入口_当天安排仍需查最新公告,https://lib.nankai.edu.cn/,2026-10-15,A_Codex公开网页核查,retrieved_in_platform_preview
+NK-LIB-HOURS,开放时间,按具体馆舍与区域,已保存中心馆与逸夫馆指定区域常规时段_节假日及寒暑假另行通知_不推断当天开放,https://lib.nankai.edu.cn/12084/list.htm,2026-10-15,A_Codex公开网页核查,retrieved_in_platform_preview
+NK-LIB-ECON-CLOSURE-20260902,图书馆关于经济学分馆闭馆维修的通知,经济学分馆_公告历史事实,网页2026-09-02公告落款2026-08-31_暂无法正常开馆_不据此断言当前未复馆,https://lib.nankai.edu.cn/2026/0902/c11989a601684/page.htm,2026-10-15,A_Codex公开网页核查,retrieved_in_platform_preview

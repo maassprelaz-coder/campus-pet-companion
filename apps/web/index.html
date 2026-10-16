@@ -5,13 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>校宠伴行 · 网页联调版</title>
 <link rel="stylesheet" href="./styles.css">
+<script type="module" src="./app.js"></script>
 </head>
 <body>
 <header class="topbar">
   <div class="title-row">
     <h1>校宠伴行（网页联调版）</h1>
     <span id="mode-badge" class="badge" data-mode="unknown">未连接</span>
-    <span id="build-badge" class="badge badge-minor">网页版本 web-0.1.0</span>
+    <span id="build-badge" class="badge badge-minor">网页版本 web-0.1.2-domain</span>
   </div>
   <p id="mode-note" class="mode-note">尚未连接到服务。</p>
 </header>
@@ -121,7 +122,7 @@
       <li>未连接：页面显示“未连接”，发送按钮不可用。</li>
       <li>连接成功：徽标显示 mock 或 live，会话已建立。</li>
       <li>正常回复：图书馆场景聊天得到建议，接受后出现任务。</li>
-      <li>拒绝路径：换一次建议点“拒绝”，确认没有发出请求、没有任务。</li>
+      <li>拒绝路径：换一次建议点“拒绝”，确认记录拒绝且没有创建任务。</li>
       <li>无建议：把场景切到宿舍或关闭主动建议后“进入场景”，确认没有编造任务。</li>
       <li>刷新恢复：刷新页面，确认按任务标识恢复状态。</li>
       <li>失败重试：停掉服务再发一次，确认出现 NETWORK_UNREACHABLE 与“重试”；重启服务后重试不重复生效。</li>
