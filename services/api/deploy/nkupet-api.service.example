@@ -1,0 +1,26 @@
+[Unit]
+Description=NKU Pet task API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=nkupet
+Group=nkupet
+WorkingDirectory=/opt/nkupet/current
+Environment=NODE_ENV=production
+Environment=PUBLIC_ORIGIN=https://nkupet.fun
+Environment=GENIOS_CONFIG_PATH=/var/lib/nkupet/genios-config.json
+Environment=TASK_DB_PATH=/var/lib/nkupet/tasks.sqlite
+ExecStart=/usr/bin/node services/api/production-server.mjs
+Restart=on-failure
+RestartSec=5
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/nkupet
+
+[Install]
+WantedBy=multi-user.target
