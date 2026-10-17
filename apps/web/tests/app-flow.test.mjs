@@ -254,9 +254,11 @@ test('换形象：切换下拉立刻给一眼待机贴图，随后动作也用�
   await loadPage();
   await waitFor(() => page.el('mode-badge').textContent === '模拟 mock', '自动连上 mock');
 
-  // 还没收到任何服务响应：默认小狗，且不猜动作（不显示贴图）。
+  // 还没收到任何服务响应：默认小狗待机贴图（写明“默认”，不冒充服务动作）。
   assert.equal(page.el('pet-kind-select').value, 'dog');
-  assert.equal(page.el('pet-image').hidden, true);
+  assert.match(page.el('pet-image').src, /pet-dog-idle\.webp$/, '首页默认显示小狗待机贴图');
+  assert.match(page.el('pet-asset-note').textContent, /默认待机/);
+  assert.match(page.el('pet-action-label').textContent, /待机（默认/);
 
   // 换形象：只换图、不发请求（没有建议、没有错误），并写进本地存储。
   page.el('pet-kind-select').value = 'cat';

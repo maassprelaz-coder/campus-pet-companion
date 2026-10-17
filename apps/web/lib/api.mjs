@@ -186,7 +186,12 @@ export class CompanionClient {
 
     let response;
     try {
-      response = await this.fetchImpl(this.baseUrl + path, init);
+      // 关键：浏览器里 `window.fetch` 必须无 receiver 调用。写成 `this.fetchImpl(...)`
+      // 会让原生 fetch 的 this 变成客户端对象，Chromium/Edge 直接抛
+      // "TypeError: Failed to execute 'fetch' on 'Window': Illegal invocation"，
+      // 页面就永远连不上服务（Node 的 fetch 不校验 receiver，测试看不出来）。
+      const fetchImpl = this.fetchImpl;
+      response = await fetchImpl(this.baseUrl + path, init);
     } catch {
       throw normalizeError(0, null, { networkFailure: true });
     }

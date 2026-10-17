@@ -118,6 +118,29 @@ test('CompanionClient 建立会话并校验返回', async () => {
   await assert.rejects(() => client2.openSession(), error => error instanceof ApiError && error.retriable === true);
 });
 
+// 回归：真实浏览器（Edge 155 实测）里 `obj.fetchImpl(...)` 会抛
+// "TypeError: Failed to execute 'fetch' on 'Window': Illegal invocation"。
+// Node 的 fetch 不校验 receiver，所以必须显式模拟浏览器语义，否则页面"连不上服务"却测试全绿。
+test('fetchImpl 必须无 receiver 调用，否则浏览器会 Illegal invocation', async () => {
+  const seen = [];
+  const windowLikeFetch = function windowFetch(url, init) {
+    if (this !== undefined) {
+      throw new TypeError("Failed to execute 'fetch' on 'Window': Illegal invocation");
+    }
+    seen.push({ url, method: init?.method ?? 'GET' });
+    return Promise.resolve({
+      ok: true,
+      status: 200,
+      json: async () => ({ mode: 'mock', message: '仅本地联调' }),
+    });
+  };
+
+  const client = new CompanionClient({ baseUrl: 'http://127.0.0.1:8787', fetchImpl: windowLikeFetch });
+  const health = await client.health();
+  assert.equal(health.mode, 'mock');
+  assert.deepEqual(seen, [{ url: 'http://127.0.0.1:8787/health', method: 'GET' }]);
+});
+
 test('sendEvent 带会话头与幂等键，重试时键保持一致', async () => {
   const { fetchImpl, calls } = fakeFetch(() => ({ payload: { mode: 'mock', reply: '好' } }));
   const client = new CompanionClient({ fetchImpl });

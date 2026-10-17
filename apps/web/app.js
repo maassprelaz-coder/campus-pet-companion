@@ -26,10 +26,10 @@ const state = {
   mode: 'unknown',
   scene: 'dorm',
   proactive: true,
-  // 宠物形象：旧原型 4 只宠物共用同一套动作。petPreview 表示“用户刚换过形象”，
-  // 此时即使还没收到服务响应，也先用 idle 给一眼贴图，让切换立刻看得见。
+  // 宠物形象：旧原型 4 只宠物共用同一套动作。petPreview 表示“用 idle 先占位”，
+  // 默认开启：首页一打开就能看见自己的宠物（待机不等于服务返回的动作，标签会写明“默认”）。
   petKind: view.DEFAULT_PET_KIND,
-  petPreview: false,
+  petPreview: true,
   remember: false,
   pending: false,
   suggestion: null,
@@ -237,7 +237,7 @@ function renderEvidence() {
   const action = state.lastResponse?.pet_action ?? null;
   const stage = el('pet-stage');
   if (stage) stage.dataset.action = action ?? 'none';
-  setText(el('pet-action-label'), `动作：${action ? view.petActionLabel(action) : '尚未收到服务响应'}`);
+  setText(el('pet-action-label'), `动作：${action ? view.petActionLabel(action) : '待机（默认，尚未收到服务响应）'}`);
   setText(el('evidence-event'), state.lastEvent
     ? `事件：${state.lastEvent.event_type}｜event_id=${state.lastEvent.event_id}｜场景 ${view.sceneLabel(state.lastEvent.scene)}｜主动建议 ${state.lastEvent.preferences?.proactive ? '开' : '关'}｜字数 ${state.lastEvent.user_message.length}`
     : '事件：尚未发送。');
@@ -253,7 +253,7 @@ function renderPet() {
   const image = el('pet-image');
   if (!image) return;
   const kind = state.petKind;
-  // 还没收到服务响应时不猜动作；只有用户主动换过形象时，才用 idle 先给一眼预览。
+  // 还没收到服务响应时不当成服务动作：默认用 idle 占位（写明“默认”），用户换过形象也先看一眼 idle。
   const action = state.lastResponse?.pet_action ?? (state.petPreview ? 'idle' : null);
   const file = action ? view.petAssetFile(action, kind) : null;
 
@@ -274,7 +274,7 @@ function renderPet() {
   image.hidden = true; // 等 load 再显示，避免半张图闪一下
   image.alt = `宠物动作示意：${view.petKindLabel(kind)}${view.petActionLabel(action)}（素材为旧原型转码）`;
   image.src = PET_ASSET_BASE + file;
-  const preview = state.lastResponse?.pet_action ? '' : '，切换形象预览';
+  const preview = state.lastResponse?.pet_action ? '' : '，默认待机（服务还没返回动作）';
   setText(el('pet-asset-note'), `按动作显示贴图 ${file}（${view.petKindLabel(kind)}形象${preview}；旧原型素材转码，来源见 content/assets/pet-ui/source-register.csv）。`);
 }
 

@@ -56,7 +56,7 @@
     - 断言改成按**意图**判断：`src/href` 属性里不许出现 `http(s)://` 或协议相对 `//host`；正文里给用户看的 `http://127.0.0.1:8787` 提示文本不算外链（查整页"不许出现 http"会误伤）。
     - 新增守门用例：①必须恰好一个脚本标签、`type="module"`、`src="./app.js"`、位于 `</body>` 前；②页面引用的本地脚本/样式/图片都真实存在（`existsSync`）；③`tests/app-flow.test.mjs` 里用**真实 HTTP** 起静态服务器取 `/`、提取脚本地址、取回并校验 200 与 `text/javascript`。
 24. **教训：反例断言要写在"意图"上，不要写在"写法"上；"点了没反应"先怀疑 JS 没跑**。上一条同族风险是"页面引用了不存在的文件"，这次一并加了 `existsSync` 校验。判断口径：如果用户截图与 `index.html` 的静态初始状态完全一致（徽标/提示一字不差），问题就在"脚本没执行"，而不是"状态没渲染"——这时不该去改渲染逻辑。
-    代价与边界：这三条测试只能证明"页面会去加载脚本、脚本能取到"，**不能证明真实浏览器里交互一定生效**；真实浏览器点击走查仍记为"未验证"（本机无无头浏览器）。
+    代价与边界：这三条测试只能证明"页面会去加载脚本、脚本能取到"，**不能证明真实浏览器里交互一定生效**；真实浏览器点击走查当时记为"未验证"（本机无无头浏览器）。→ 已由 2026-10-16 晚第 29–31 条补上：本机 Edge 155 可用无头模式，走查工具已入库；也正因为补了这一层，才发现 Node 测试全绿时页面仍连不上服务。
 
 ## 宠物形象：4 只全部接入（2026-10-16）
 
@@ -70,6 +70,14 @@
 27. **拍立得相框、`3334.jpg`、`.ogg` 实测后本轮不接入（有数据、不是嫌麻烦）**。相框 4 张是竖版（604×953 / 1163×1819 / 1190×1848 / 1159×1742，约 5:8），透明像素占 61–64%、四角与中心透明；而宠物贴图是 512×512 正方形，页面本轮也没有相机/合拍流程（摄像头按第 10 条只做拒绝授权演练），硬套会像错位，不如留在 ART_BRIEF 里注明"做合拍时请给 1:1 窗口版"。`3334.jpg` 是 1204×1484 RGB 无说明彩图，来源与用途都说不清；两个 `.ogg` 约 2.2 MB / 0.95 MB、内容不明。**宁可少接，也不猜素材用途。**
 28. **favicon 用同一张贴图派生，不新找图**：`tools/convert-legacy-pets.py --favicon` 从 `pet-dog-idle.webp` 首帧裁切、补成正方形、按 512→32 的边长梯度压，直存 RGBA 超预算就先做调色板量化（255 色 + 透明），产出 `apps/web/favicon.png`（512×512 调色板 PNG 27.8 KB，需求单预算 50 KB）。`index.html` 用相对路径 `<link rel="icon">` 引用，`pet-assets.test.mjs` 守 PNG 签名、正方形、边长 192–512、体积与"页面确实引用本地 favicon"。
     过程记录：第一版只按边长降级，落到 192×192（44.3 KB）才发现"小图也能很大"；改为优先量化后保住 512。经验写在这里，避免下次再把"降边长"当第一手段。
+
+## 真实浏览器走查（2026-10-16 晚，B）
+
+29. **`this.fetchImpl(...)` 让浏览器原生 fetch 抛 `Illegal invocation`——页面在任何真实浏览器里都连不上服务**（Node 测试 57/57 全绿也测不出来）。事实经过：用本机 Edge 155 无头打开 `http://127.0.0.1:5173`，状态行报 `[NETWORK_UNREACHABLE] 连不上服务`，但同一页面里执行 `fetch('http://127.0.0.1:8787/health')` 返回 200，且 `performance.getEntriesByType('resource')` 中**没有任何 8787 的请求**——说明请求根本没发出去。用 CDP 复现调用方式：`const h = { f: window.fetch }; h.f(url)` → `TypeError: Failed to execute 'fetch' on 'Window': Illegal invocation`。
+    成因：浏览器的 `fetch` 是 WebIDL 操作，receiver 必须是 `Window`；`lib/api.mjs` 写的是 `await this.fetchImpl(...)`，receiver 变成了客户端对象。Node 的 `fetch` 不校验 receiver，所以 DOM 桩、真实 HTTP 单测都发现不了，只有真实浏览器才暴露。
+    改法：`const fetchImpl = this.fetchImpl; await fetchImpl(...)`（无 receiver 调用）；`apps/web/tests/api.test.mjs` 新增回归用例，用一个"`this !== undefined` 就抛同样 TypeError"的 stub 模拟浏览器语义，这条用例在旧写法下必失败。
+30. **真实浏览器走查工具入库，不再靠"源码级/HTTP 级"推断交互**：`apps/web/tools/browser-walkthrough.mjs`（零第三方依赖，用 Node 内置 `WebSocket` 说 CDP）自动走"连接 → 地图点图书馆 → 收到建议 → 接受 → 完成 → 换形象"，逐屏存 PNG 并额外截宠物区特写，结束时打印 `Network.loadingFailed` 与 `Log.entryAdded`，即"零网络失败/零控制台错误"的证据。用法与产物见 `README.md`，2026-10-16 晚 Edge 155 实测全绿。
+31. **首屏宠物默认待机（修订第 25 条"只给换形象预览"）**：走查截图显示，收到服务响应前宠物区是一个空框——一个宠物应用的默认画面里没有宠物。改为 `state.petPreview` 默认 `true`，用 `idle` 贴图占位，标签写"动作：待机（默认，尚未收到服务响应）"、说明写"默认待机（服务还没返回动作）"；服务返回 `pet_action` 后照旧覆盖。原则不变：**默认值只是占位，不冒充服务返回的动作**，也不因此发任何请求。
 
 - 真实服务的错误码表是否与 mock 一致（当前依赖 `NO_LOCAL_SESSION`/`TASK_NOT_FOUND`/`ORIGIN_NOT_ALLOWED`/`INVALID_EVENT` 等命名）。
 - live 服务是否同样校验 `preferences.remember === false`；若允许 `true`，需要同步授权与删除路径再开。

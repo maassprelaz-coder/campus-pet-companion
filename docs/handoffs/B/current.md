@@ -15,7 +15,8 @@
   ```
   npm run mock                                  # 终端一：http://127.0.0.1:8787
   node apps/web/dev-server.mjs                  # 终端二：http://127.0.0.1:5173
-  node --test "apps/web/tests/**/*.test.mjs"    # 53/53（10-16 增量 4 后：原 33 → 37 → 44 → 50 → 53）
+  node --test "apps/web/tests/**/*.test.mjs"    # 58/58（10-16 增量 6 后；加 tools/mock-api.test.mjs 一个则 59/59）
+  node apps/web/tools/browser-walkthrough.mjs   # 真实浏览器走查（Edge/Chrome 无头，产出截图）
   ```
   浏览器开 `127.0.0.1:5173` → 点"连接宠物" → 输入内容并选场景 → 发送 → 接受或拒绝建议 → 看任务 → 完成任务看反馈 → 刷新页面确认任务状态恢复。
 - 实际验证及环境（区分模拟与真实）：
@@ -126,9 +127,31 @@
   - `python tools/convert-legacy-pets.py --check --kinds dog,turtle,cat,sheep` → **28/28 ok，不合规范 0 个**（每行输出画布 512×512、`animated: True`、帧数、时长 83、loop 0、四角 alpha=[0,0,0,0]、含 `ANIM` 块）。
   - favicon 实测：`512×512`、`mode P`、`28463` 字节、四角 `(0,0,0,0)`、透明像素占 28.1%。
   - 静态服务器 HTTP：新贴图 `./assets/pet-ui/pet-cat-idle.webp` → **200 / `image/webp`**（用例在真实 HTTP 上断言，取代只查文件存在）。
-- 未验证：真实浏览器点击走查（本机无无头浏览器）——4 只形象的切换动画效果、透明底与浅底的观感都还没有真人目视确认；请 A 强刷 `http://127.0.0.1:5173` 后反馈。
+- 未验证：真实浏览器点击走查（本机无无头浏览器）——4 只形象的切换动画效果、透明底与浅底的观感都还没有真人目视确认；请 A 强刷 `http://127.0.0.1:5173` 后反馈。→ **已完成，见下文"增量 6"**：Edge 155 无头走查确认 4 只形象透明底/换图/动作都正常，同时查出 `fetch` 调用缺陷并修复。
 - 遗留问题：素材来源仍为"旧原型历史文件、未提供许可"（队长已决定先用；进提交材料的措辞仍由 A 定）；合拍/相机未做（相框素材已盘点并给出"要 1:1 窗口版"的需求）；本增量相关改动**全部仍未提交**——工作树现有 13 个已跟踪文件被修改（本增量 11 个，另 2 个属增量 2 的校园地图素材）+ 8 个未跟踪条目（其中 `apps/web/assets/` 内含 28 个 WebP），`feat/web` HEAD 仍停在 `556c4a6`。
 - 接收人（A）可继续做什么：①按上文命令复现 58/58；②打开 5173 在"4. 宠物与动作"里切换 4 只形象，看预览贴图与动作贴图是否都跟着变；③确认这 28 张 + favicon 能否进提交材料（登记表 `status` 均写"已接入网页（来源未提供）"）。
+
+## 增量 6（2026-10-16 晚）：真实浏览器走查，修掉"页面永远连不上服务"
+
+- 触发：A 要求确认"4 形象在真实浏览器里到底对不对"。此前"本机无无头浏览器"的判断不成立——本机有 Edge（`C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe`），`--headless=new` + `--remote-debugging-port` 可驱动。
+- 结论：**4 只形象在真实 Edge 里是对的**（透明底干净、动作跟随服务、换形象正常）；但同时查出一个比形象严重得多的缺陷：**页面在任何浏览器里都连不上服务**，已修。
+- 缺陷证据链：
+  1. Edge 打开 5173，状态行 `连接失败：[NETWORK_UNREACHABLE]`；
+  2. 同一页面里 `fetch('http://127.0.0.1:8787/health')` → 200，`performance.getEntriesByType('resource')` 里**没有任何 8787 请求**；
+  3. 用 CDP 复现调用方式：`const h = { f: window.fetch }; h.f(url)` → `TypeError: Failed to execute 'fetch' on 'Window': Illegal invocation`。
+  4. 成因：`lib/api.mjs` 写的是 `await this.fetchImpl(...)`，浏览器原生 fetch 的 receiver 变成客户端对象（WebIDL 要求 `Window`）；Node 的 fetch 不校验 receiver，所以 57 个用例全绿、curl 也全 200，页面里却一个请求都没发出去。
+- 改法：`const fetchImpl = this.fetchImpl; await fetchImpl(...)`；新增回归用例——stub 在 `this !== undefined` 时抛同样的 TypeError（旧写法下必失败）。
+- 新增工具 `apps/web/tools/browser-walkthrough.mjs`：零第三方依赖（Node 内置 `WebSocket` 说 CDP），自动走 连接 → 地图点图书馆 → 建议 → 接受 → 完成 → 换形象，逐屏截图 + 宠物区特写，结束时打印 `Network.loadingFailed` 与 `Log.entryAdded`。
+- 顺带修：首屏宠物区原本是个空框 → `state.petPreview` 默认开，用 `idle` 占位并写明"默认"（`DECISIONS.md` 第 31 条），服务返回 `pet_action` 后照旧覆盖。
+- 改动文件：`apps/web/lib/api.mjs`、`apps/web/app.js`、`apps/web/index.html`、`apps/web/tests/{api,app-flow}.test.mjs`、`apps/web/tools/browser-walkthrough.mjs`（新增）、`apps/web/{README.md,DECISIONS.md}`、`docs/submission/screenshots/mock-walkthrough/`（新增 6 张 WebP）、`docs/STATUS.md`。
+- 回归与验证（真实命令输出）：
+  - `"C:\Program Files\nodejs\node.exe" --test "apps/web/tests/*.test.mjs" tools/mock-api.test.mjs` → **59/59 通过**（网页 58 + mock 1），`fail 0`。
+  - `node apps/web/tools/browser-walkthrough.mjs` → 内核 `Edg/155.0.4283.45`：① `已连接 http://127.0.0.1:8787（本地会话已建立）`；② 建议＝专注 25 分钟；③ 任务进行中；④ 已完成；⑤ 换小羊 `pet-sheep-happy.webp`；`网络失败：无`；控制台仅一条可选 `config.json` 404（该文件默认不存在、已 gitignore、代码已 catch，属预期）。
+  - 产物：`docs/submission/screenshots/mock-walkthrough/`（01 已连接、02 场景建议、02b 宠物动作特写、03 任务进行中、04 完成反馈、05 换小羊；由脚本 PNG 按 q82 转 WebP，合计约 1.3 MB）。
+- 未验证/遗留：
+  - 全部为 mock；live 服务、真实模型/积分/存储仍为 0，截图不能当真实成效证据。
+  - 无头模式不等于人工验收：真实鼠标/键盘、手机尺寸、无障碍朗读、另一台设备访问仍未测。
+  - 这批改动**尚未提交**（工作树：4 个已跟踪文件被修改 + `apps/web/tools/`、`docs/submission/screenshots/` 新增），等 A 确认后按分支流程提交，不改写队友历史。
 
 ## 给 A 的需求清单（2026-10-16 更新，最晚 16 日上午；逾期 B 的联调、试用与材料整体顺延）
 
@@ -145,6 +168,6 @@
 
 **不在本表、由 B 自己核对**（不推给 A）：飞书全文、准确截止时刻、提交入口、申报模板、评审访问方式，见[B任务卡](../../assignments/B_web.md)第 2 条。未取得就写"未核实"，不默认午夜。
 
-**这 4 条到位前 B 并行做（不等 A）**：真实浏览器点击走查并修 UX（本机无无头浏览器）；旧宠物素材盘点与登记（已完成，见"增量 1"）；校园地图接入（已完成，见"增量 2"）；试用记录准备（`content/pilot/`，暂无人数是正常的）；材料提纲。视觉/合拍等增强排在核心链路之后，只做一个。
+**这 4 条到位前 B 并行做（不等 A）**：真实浏览器点击走查并修 UX（已完成，见"增量 6"）；旧宠物素材盘点与登记（已完成，见"增量 1"）；校园地图接入（已完成，见"增量 2"）；试用记录准备（`content/pilot/`，暂无人数是正常的）；材料提纲。视觉/合拍等增强排在核心链路之后，只做一个。
 
 与 A 沟通用的 PR 描述草稿见[pr-draft.md](pr-draft.md)。
