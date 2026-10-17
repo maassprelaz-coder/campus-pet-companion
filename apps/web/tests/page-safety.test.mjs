@@ -2,7 +2,7 @@
 // 比赛与协作规则要求文本不当 HTML 执行、不直连模型、不引外部 CDN、不出现密钥。
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 
 const read = relative => readFileSync(new URL(relative, import.meta.url), 'utf8');
 
@@ -32,13 +32,40 @@ test('页面不直连模型、不出现密钥或鉴权头', () => {
   }
 });
 
-test('页面不加载外部 CDN 或第三方脚本', () => {
-  assert.equal(/<script[^>]+src=/.test(pageHtml), false, 'index.html 不应引用外部脚本');
-  assert.equal(/https?:\/\/(?!127\.0\.0\.1|localhost)/.test(pageHtml.replace(/<a[^>]*>/g, '')), false);
+test('页面不加载外部 CDN 或第三方脚本，只引用仓库内相对路径', () => {
+  // 原断言写成“不许出现 <script src=>”，结果把本仓库的本地脚本也一起禁掉了，
+  // 页面因此从来没有加载过 app.js（2026-10-16 查实的真根因）。这里改成按“是否外链”判断。
+  const remote = /(?:src|href)\s*=\s*["'](?:[a-z][a-z0-9+.-]*:)?\/\//gi;
+  assert.equal(remote.test(pageHtml), false, 'index.html 不应引用任何外部地址（含协议相对 //host）');
+  // 正文里的 http://127.0.0.1:8787 是给用户看的提示文本（input 的 value 也一样），不是外部引用，
+  // 所以只查 src/href 属性，不用“整页不许出现 http”这种会误伤的一刀切断言。
+  const links = [...pageHtml.matchAll(/<a\b[^>]*href\s*=\s*["']([^"']+)["']/gi)].map(match => match[1]);
+  for (const href of links) {
+    assert.match(href, /^(?:\.{0,2}\/|#|https:\/\/)/, `页内链接只允许相对路径、锚点或 https：${href}`);
+  }
+});
+
+test('页面必须以模块方式加载本仓库的 app.js，否则页面会一直是静态 HTML', () => {
+  const scripts = pageHtml.match(/<script\b[^>]*>/gi) ?? [];
+  assert.equal(scripts.length, 1, `应恰好有一个脚本标签，实际 ${scripts.length} 个`);
+  assert.match(scripts[0], /type=["']module["']/, '必须声明 type="module"');
+  assert.match(scripts[0], /src=["']\.\/app\.js["']/, '必须指向本目录的 ./app.js');
+  assert.match(pageHtml, /<script\b[^>]*><\/script>\s*<\/body>/, '脚本标签应放在 </body> 前');
+});
+
+test('页面引用的本地脚本、样式、图片都真实存在', () => {
+  const refs = [...pageHtml.matchAll(/(?:src|href)\s*=\s*["']([^"'#]+)["']/gi)].map(match => match[1]);
+  assert.ok(refs.length >= 2, `页面至少应引用 styles.css 与 app.js，实际 ${refs.length} 个`);
+  for (const ref of refs) {
+    assert.equal(/^(?:[a-z][a-z0-9+.-]*:)?\/\//i.test(ref), false, `不应引用外部地址：${ref}`);
+    const target = new URL(ref, new URL('../index.html', import.meta.url));
+    assert.equal(existsSync(target), true, `页面引用了不存在的文件：${ref}`);
+  }
 });
 
 test('关键交互元素与标识都存在', () => {
   for (const id of ['mode-badge', 'mode-note', 'connect-button', 'scene-select', 'proactive-checkbox',
+    'pet-kind-select', 'pet-image', 'pet-asset-note',
     'message-input', 'send-button', 'chat-log', 'suggestion-region', 'task-region', 'error-region',
     'sources-region', 'permission-location', 'permission-camera', 'permission-note', 'evidence-event']) {
     assert.ok(pageHtml.includes(`id="${id}"`), `缺少元素 ${id}`);

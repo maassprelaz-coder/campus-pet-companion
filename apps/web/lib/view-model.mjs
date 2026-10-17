@@ -5,6 +5,7 @@ import { MAX_MESSAGE_LENGTH } from './api.mjs';
 export const MODE_LABELS = Object.freeze({
   mock: '模拟 mock',
   live: '真实 live',
+  error: '连接失败',
   unknown: '未连接',
 });
 
@@ -24,6 +25,23 @@ export const PET_ACTION_LABELS = Object.freeze({
   roll: '打滚',
   sad: '难过',
 });
+
+// 宠物形象（旧原型素材库共 4 只，动作与画风一致；2026-10-16 全部接入，见 DECISIONS 第 25 条）。
+export const PET_KIND_LABELS = Object.freeze({
+  dog: '小狗',
+  turtle: '小龟',
+  cat: '猫咪',
+  sheep: '小羊',
+});
+
+export const DEFAULT_PET_KIND = 'dog';
+
+// 动作 × 形象 → 网页贴图文件名（旧原型 4 只宠物素材，本项目转码为动画 WebP）。
+// 两个白名单（形象 / 动作）都命中才返回文件名，否则返回 null，页面就只用文字，不猜路径、不拼字符串。
+export const PET_ASSET_FILES = Object.freeze(Object.fromEntries(
+  Object.entries(PET_KIND_LABELS).flatMap(([kind]) => Object.keys(PET_ACTION_LABELS)
+    .map(action => [`${kind}.${action}`, `pet-${kind}-${action}.webp`])),
+));
 
 export const STRATEGY_LABELS = Object.freeze({
   listen: '倾听',
@@ -57,11 +75,54 @@ export function modeNotice(mode) {
   if (mode === 'live') {
     return '当前回复来自真实服务：材料与成效统计只能使用这一模式下的记录。';
   }
+  if (mode === 'error') {
+    return '连接失败：服务没有响应。请先在本机运行 npm run mock（127.0.0.1:8787），再点“连接服务”重试；详细错误与重试按钮在第 8 节。';
+  }
   return '尚未连接到服务：请先启动服务并点击“连接服务”。';
+}
+
+// 连接状态可见性（B 缺陷修复 2026-10-16）：
+// 之前连接失败只写第 8 节，顶部与按钮附近没有任何变化，用户点击后以为“没反应”。
+// 现在按钮正下方的状态行会明确显示失败原因和下一步操作。
+export function connectStatusView({ status = 'idle', baseUrl = '', hasSession = false, error = null } = {}) {
+  if (status === 'pending') return { text: `正在连接 ${baseUrl} …`, tone: 'warn' };
+  if (status === 'ok') {
+    return { text: `已连接 ${baseUrl}（本地会话${hasSession ? '已建立' : '未建立'}）`, tone: 'ok' };
+  }
+  if (status === 'failed') {
+    const detail = error?.detail ?? error?.message ?? '服务没有响应';
+    return {
+      text: `连接失败：${detail}｜请确认已运行 npm run mock（127.0.0.1:8787）或改上面的服务地址，然后重新点“连接服务”。详细错误与重试按钮在第 8 节。`,
+      tone: 'err',
+    };
+  }
+  return { text: `服务地址：${baseUrl}｜本地会话：${hasSession ? '已建立' : '未建立'}`, tone: 'muted' };
 }
 
 export function petActionLabel(action) {
   return PET_ACTION_LABELS[action] ?? `未识别动作（${action ?? '空'}）`;
+}
+
+export function petKindLabel(kind) {
+  return PET_KIND_LABELS[kind] ?? `未识别形象（${kind ?? '空'}）`;
+}
+
+// 形象白名单守卫：本地存储里可能留着旧值或被手改过，页面只用白名单内的形象，其余回落到默认。
+export function knownPetKind(kind) {
+  return typeof kind === 'string' && Object.hasOwn(PET_KIND_LABELS, kind) ? kind : null;
+}
+
+// kind 缺省为小狗（历史调用点不传形象时行为不变）。
+export function petAssetFile(action, kind = DEFAULT_PET_KIND) {
+  const resolved = knownPetKind(kind);
+  if (!resolved || typeof action !== 'string') return null;
+  const key = `${resolved}.${action}`;
+  return Object.hasOwn(PET_ASSET_FILES, key) ? PET_ASSET_FILES[key] : null;
+}
+
+// 场景白名单守卫（地图地标等入口用）：只认契约允许的场景，其余返回 null，页面就不发请求。
+export function knownScene(scene) {
+  return typeof scene === 'string' && Object.hasOwn(SCENE_LABELS, scene) ? scene : null;
 }
 
 export function sceneLabel(scene) {
@@ -169,5 +230,5 @@ export function formatError(error) {
 
 export function sendLocked({ pending, mode }) {
   if (pending) return true;
-  return mode === 'unknown';
+  return mode === 'unknown' || mode === 'error' || mode === 'pending';
 }

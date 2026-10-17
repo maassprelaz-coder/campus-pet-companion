@@ -46,9 +46,15 @@ h3 { font-size: 15px; margin: 0 0 6px; }
 }
 .badge[data-mode="mock"] { background: var(--warn-bg); color: var(--warn); border-color: #f0d7a8; }
 .badge[data-mode="live"] { background: #e7f7ed; color: var(--ok); border-color: #b6e3c5; }
+.badge[data-mode="error"] { background: #fdecec; color: var(--err); border-color: #f3c2c2; }
 .badge-minor { font-family: ui-monospace, Consolas, monospace; }
 
 .mode-note { margin: 8px 0 0; color: var(--muted); font-size: 13px; }
+
+/* 连接状态行（在“连接服务”按钮下面）：失败必须一眼看见，不能只在第 8 节。 */
+#health-text[data-tone="err"] { color: var(--err); font-weight: 600; }
+#health-text[data-tone="ok"] { color: var(--ok); }
+#health-text[data-tone="warn"] { color: var(--warn); }
 
 main {
   max-width: 980px;
@@ -104,9 +110,33 @@ button.secondary { background: #fff; }
   text-align: center;
 }
 .pet-stage[data-action="happy"] { background: #f2fbf5; }
-.pet-stage[data-action="think"] { background: #f3f6ff; }
+.pet-stage[data-action="think"] { background: #e7eefb; } /* 略深：think 贴图自带的白色问号在近白底上看不见 */
 .pet-stage[data-action="sad"] { background: #fdf3f3; }
+.pet-kind-select { max-width: 240px; }
 .pet-action-label { font-weight: 600; margin: 0 0 6px; }
+/* 宠物贴图：固定高度、透明底，动作切换时不改变布局（避免页面跳动）。 */
+.pet-image {
+  display: block;
+  height: 200px;
+  width: auto;
+  max-width: 100%;
+  margin: 0 auto 8px;
+}
+.pet-image[hidden] { display: none; }
+
+/* 校园地图（AI 生成示意插画）：按容器宽度自适应，固定宽高比，避免加载时页面跳动。 */
+.campus-map-figure { margin: 0 0 8px; }
+.campus-map {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+}
+.campus-map[hidden] { display: none; }
+.campus-map-figure .muted { margin: 6px 0 0; }
+.map-hotspot { min-width: 88px; }
 
 .chat-log { list-style: none; margin: 10px 0 0; padding: 0; max-height: 280px; overflow-y: auto; }
 .log-line { padding: 6px 8px; border-bottom: 1px dashed var(--line); font-size: 14px; }

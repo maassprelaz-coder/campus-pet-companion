@@ -106,3 +106,58 @@ test('未连接时发送被锁住，等待时也锁住', () => {
   assert.equal(view.sendLocked({ pending: false, mode: 'mock' }), false);
   assert.equal(view.sendLocked({ pending: false, mode: 'live' }), false);
 });
+
+test('连接失败有独立徽标与可见文案（回归：点了没反应）', () => {
+  assert.deepEqual(view.modeBadge('error'), { mode: 'error', text: '连接失败' });
+  assert.match(view.modeNotice('error'), /连接失败/);
+  assert.match(view.modeNotice('error'), /npm run mock/);
+});
+
+test('连接状态行只在真连上时显示已连接，失败必须带原因与下一步', () => {
+  const idle = view.connectStatusView({ status: 'idle', baseUrl: 'http://127.0.0.1:8787' });
+  assert.equal(idle.tone, 'muted');
+  assert.match(idle.text, /http:\/\/127\.0\.0\.1:8787/);
+
+  const pending = view.connectStatusView({ status: 'pending', baseUrl: 'http://127.0.0.1:8787' });
+  assert.equal(pending.tone, 'warn');
+  assert.match(pending.text, /正在连接/);
+
+  const ok = view.connectStatusView({ status: 'ok', baseUrl: 'http://127.0.0.1:8787', hasSession: true });
+  assert.equal(ok.tone, 'ok');
+  assert.match(ok.text, /已连接/);
+  assert.match(ok.text, /已建立/);
+
+  const failed = view.connectStatusView({
+    status: 'failed',
+    baseUrl: 'http://127.0.0.1:8787',
+    error: { code: 'NETWORK_ERROR', detail: '[NETWORK_ERROR] 服务没有响应' },
+  });
+  assert.equal(failed.tone, 'err');
+  assert.match(failed.text, /NETWORK_ERROR/);
+  assert.match(failed.text, /npm run mock/);
+  assert.match(failed.text, /第 8 节/);
+
+  // 没有错误对象时也不能出现空白状态行。
+  assert.equal(view.connectStatusView({ status: 'failed' }).tone, 'err');
+  assert.ok(view.connectStatusView({ status: 'failed' }).text.length > 10);
+});
+
+test('宠物形象白名单：4 只形象 × 7 个动作都能取到贴图，白名单外不猜', () => {
+  assert.deepEqual(Object.keys(view.PET_KIND_LABELS), ['dog', 'turtle', 'cat', 'sheep']);
+  assert.equal(view.DEFAULT_PET_KIND, 'dog');
+  assert.equal(view.petAssetFile('idle', 'sheep'), 'pet-sheep-idle.webp');
+  assert.equal(view.petAssetFile('roll', 'turtle'), 'pet-turtle-roll.webp');
+  assert.equal(view.petAssetFile('idle'), 'pet-dog-idle.webp', '不传形象时默认小狗');
+  assert.equal(view.knownPetKind('cat'), 'cat');
+  assert.equal(view.knownPetKind(''), null);
+  assert.equal(view.knownPetKind(null), null);
+  assert.equal(view.knownPetKind('__proto__'), null);
+  assert.equal(view.petKindLabel('dog'), '小狗');
+  assert.match(view.petKindLabel('dragon'), /未识别形象/);
+});
+
+test('失败与等待时发送都被锁住', () => {
+  assert.equal(view.sendLocked({ pending: false, mode: 'error' }), true);
+  assert.equal(view.sendLocked({ pending: false, mode: 'pending' }), true);
+});
+

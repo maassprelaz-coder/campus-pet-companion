@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>校宠伴行 · 网页联调版</title>
+<link rel="icon" type="image/png" href="./favicon.png">
 <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
@@ -27,7 +28,7 @@
       <button id="connect-button" class="primary" type="button">连接服务</button>
       <button id="health-button" class="secondary" type="button">服务自检</button>
     </div>
-    <p id="health-text" class="muted"></p>
+    <p id="health-text" class="muted" data-tone="muted" role="status" aria-live="polite"></p>
     <p class="muted">本页只调用本队契约 contracts v0.1 草案；不含任何平台密钥，也不直连模型。真实服务地址由 A 确认后填入。</p>
   </section>
 
@@ -52,16 +53,43 @@
     <p id="remember-state" class="muted"></p>
   </section>
 
+  <section class="panel" aria-labelledby="map-title">
+    <h2 id="map-title">3. 校园地图（AI 生成示意）</h2>
+    <figure class="campus-map-figure">
+      <img id="campus-map" class="campus-map" src="./assets/campus/map-campus.webp" width="2000" height="908" decoding="async"
+        alt="校园地图示意插画（AI 生成）：俯瞰校园，含教学区、图书馆、操场、食堂与宿舍方向的树林水系；仅作氛围示意，非精确导航">
+      <figcaption id="campus-map-note" class="muted">AI 生成示意插画（源图由千问 AI 生成；本项目已去除生成器水印与顶部文案，裁边框后转码为 2000×908 静态 WebP）；<strong>非精确导航，不代表真实校区地标的位置与距离</strong>。图上站牌数字与文字属 AI 装饰，不作为事实依据。本页不读取定位：点击下方地标只是选择场景并发送 scene_enter。</figcaption>
+    </figure>
+    <p id="campus-map-fallback" class="muted" hidden>地图图片没有加载成功（本地缺文件或被拦截）：这里只保留上面的文字说明，场景选择、聊天、建议与任务照常可用。</p>
+    <div class="button-row" id="campus-map-hotspots" role="group" aria-label="地图地标（等价于选择场景并发送 scene_enter）">
+      <button class="secondary map-hotspot" type="button" data-scene="dorm">宿舍</button>
+      <button class="secondary map-hotspot" type="button" data-scene="library">图书馆</button>
+      <button class="secondary map-hotspot" type="button" data-scene="sports">操场</button>
+      <button class="secondary map-hotspot" type="button" data-scene="canteen">食堂</button>
+    </div>
+  </section>
+
   <section class="panel" aria-labelledby="pet-title">
-    <h2 id="pet-title">3. 宠物与动作</h2>
+    <h2 id="pet-title">4. 宠物与动作</h2>
+    <label class="field">
+      <span>宠物形象（旧原型 4 只素材，动作与小狗完全一致）</span>
+      <select id="pet-kind-select" class="pet-kind-select">
+        <option value="dog">小狗</option>
+        <option value="turtle">小龟</option>
+        <option value="cat">猫咪</option>
+        <option value="sheep">小羊</option>
+      </select>
+    </label>
     <div id="pet-stage" class="pet-stage" data-action="none">
       <p id="pet-action-label" class="pet-action-label">动作：尚未收到服务响应</p>
-      <p class="muted">动作只取契约白名单（idle/happy/think/sleep/eat/roll/sad）；素材仍在盘点许可，本版先用占位，不引用来源不明的旧图片与音频。</p>
+      <img id="pet-image" class="pet-image" alt="" hidden>
+      <p id="pet-asset-note" class="muted"></p>
+      <p class="muted">动作只取契约白名单（idle/happy/think/sleep/eat/roll/sad）。贴图取自旧原型素材库的 4 只宠物，每只 7 个动作共 28 个 GIF，已由本项目用 tools/convert-legacy-pets.py 统一转码为动画 WebP（512×512、透明底、12 帧、约 1 秒循环、单文件 ≤300 KB），并逐条登记在 content/assets/pet-ui/source-register.csv；旧项目的来源不明音频（.ogg）本轮不引入。</p>
     </div>
   </section>
 
   <section class="panel" aria-labelledby="chat-title">
-    <h2 id="chat-title">4. 对话与回复</h2>
+    <h2 id="chat-title">5. 对话与回复</h2>
     <form id="chat-form" class="chat-form">
       <label class="field">
         <span>想说的话（最长 2000 字）</span>
@@ -76,28 +104,28 @@
     <ol id="chat-log" class="chat-log" aria-live="polite"></ol>
   </section>
   <section class="panel" aria-labelledby="suggestion-title">
-    <h2 id="suggestion-title">5. 建议：接受或拒绝</h2>
+    <h2 id="suggestion-title">6. 建议：接受或拒绝</h2>
     <div id="suggestion-region"></div>
   </section>
 
   <section class="panel" aria-labelledby="task-title">
-    <h2 id="task-title">6. 任务状态与完成反馈</h2>
+    <h2 id="task-title">7. 任务状态与完成反馈</h2>
     <div id="task-region"></div>
   </section>
 
   <section class="panel" aria-labelledby="error-title">
-    <h2 id="error-title">7. 失败、等待与重试</h2>
+    <h2 id="error-title">8. 失败、等待与重试</h2>
     <p class="muted">等待中按钮会禁用；失败会显示服务返回的错误码；可重试的错误会给出“重试”，并复用同一个 event_id 与幂等键。</p>
     <div id="error-region"></div>
   </section>
 
   <section class="panel" aria-labelledby="source-title">
-    <h2 id="source-title">8. 来源引用</h2>
+    <h2 id="source-title">9. 来源引用</h2>
     <div id="sources-region"></div>
   </section>
 
   <section class="panel" aria-labelledby="perm-title">
-    <h2 id="perm-title">9. 定位与摄像头授权</h2>
+    <h2 id="perm-title">10. 定位与摄像头授权</h2>
     <p id="permission-location" class="muted"></p>
     <p id="permission-camera" class="muted"></p>
     <div class="button-row">
@@ -108,7 +136,7 @@
   </section>
 
   <section class="panel" aria-labelledby="evidence-title">
-    <h2 id="evidence-title">10. 证据面板（录屏用）</h2>
+    <h2 id="evidence-title">11. 证据面板（录屏用）</h2>
     <p id="evidence-event" class="mono"></p>
     <p id="evidence-response" class="mono"></p>
     <p id="evidence-build" class="mono"></p>
@@ -116,7 +144,7 @@
   </section>
 
   <section class="panel" aria-labelledby="states-title">
-    <h2 id="states-title">11. 联调时建议走一遍的状态</h2>
+    <h2 id="states-title">12. 联调时建议走一遍的状态</h2>
     <ol class="checklist">
       <li>未连接：页面显示“未连接”，发送按钮不可用。</li>
       <li>连接成功：徽标显示 mock 或 live，会话已建立。</li>
@@ -134,5 +162,6 @@
   <p class="muted">提交边界：mock 回复只能用于联调，不能作为真实平台效果、试点成效或成片素材；素材与校园事实以来源登记表和 A 的核实结果为准，本页不写未核实来源。</p>
   <p class="muted">本页不新增手机 App、不做桌面打包，也不处理真实密钥与私密日记。</p>
 </footer>
+<script type="module" src="./app.js"></script>
 </body>
 </html>
